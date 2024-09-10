@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -22,8 +23,8 @@ func (r *userRepository) CreateUser(ctx context.Context, user *models.User) erro
               VALUES ($1, $2, $3)`
 	_, err := r.db.ExecContext(ctx, query, user.Name, user.Email, user.Password)
 	if err != nil {
-		log.Printf("Error creating user: %v", err)
-		return err
+		log.Printf("[Repository - CreateUser] Error executing query: %v", err)
+		return fmt.Errorf("failed to create user")
 	}
 	return nil
 }
@@ -38,8 +39,8 @@ func (r *userRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*mo
 		if err == sql.ErrNoRows {
 			return nil, nil // User not found
 		}
-		log.Printf("Error retrieving user by ID: %v", err)
-		return nil, err
+		log.Printf("[Repository - GetUserByID] Error scanning row: %v", err)
+		return nil, fmt.Errorf("failed to retrieve user")
 	}
 	return &user, nil
 }
@@ -50,8 +51,8 @@ func (r *userRepository) UpdateUser(ctx context.Context, user *models.User) erro
               WHERE id = $3`
 	_, err := r.db.ExecContext(ctx, query, user.Name, user.Email, user.UserID)
 	if err != nil {
-		log.Printf("Error updating user: %v", err)
-		return err
+		log.Printf("[Repository - UpdateUser] Error executing query: %v", err)
+		return fmt.Errorf("failed to update user")
 	}
 	return nil
 }
@@ -61,8 +62,8 @@ func (r *userRepository) DeleteUser(ctx context.Context, userID uuid.UUID) error
 	query := `DELETE FROM users WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
-		log.Printf("Error deleting user: %v", err)
-		return err
+		log.Printf("[Repository - DeleteUser] Error executing query: %v", err)
+		return fmt.Errorf("failed to delete user")
 	}
 	return nil
 }
@@ -71,7 +72,8 @@ func (r *userRepository) ListUsers(ctx context.Context) ([]*models.User, error) 
 	query := `SELECT id, name, email, role, created_at, updated_at FROM users where role <> 'super admin'`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		log.Printf("[Repository - ListUsers] Error executing query: %v", err)
+		return nil, fmt.Errorf("failed to list users")
 	}
 	defer rows.Close()
 
@@ -79,7 +81,8 @@ func (r *userRepository) ListUsers(ctx context.Context) ([]*models.User, error) 
 	for rows.Next() {
 		var user models.User
 		if err := rows.Scan(&user.UserID, &user.Name, &user.Email, &user.Role, &user.CreatedAt, &user.UpdatedAt); err != nil {
-			return nil, err
+			log.Printf("[Repository - ListUsers] Error scanning row: %v", err)
+			return nil, fmt.Errorf("failed to list users")
 		}
 		users = append(users, &user)
 	}
@@ -95,7 +98,8 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		log.Printf("[Repository - GetUserByEmail] Error scanning row: %v", err)
+		return nil, fmt.Errorf("failed to retrieve user by email")
 	}
 	return &user, nil
 }
@@ -103,5 +107,9 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 func (r *userRepository) UpdateUserRoles(ctx context.Context, userID uuid.UUID, roles string) error {
 	query := `UPDATE users SET role = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, roles, userID)
-	return err
+	if err != nil {
+		log.Printf("[Repository - UpdateUserRoles] Error executing query: %v", err)
+		return fmt.Errorf("failed to update user roles")
+	}
+	return nil
 }

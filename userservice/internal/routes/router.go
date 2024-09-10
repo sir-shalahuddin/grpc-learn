@@ -4,25 +4,23 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/config"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/handler"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/repository"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/service"
 )
 
 // RegisterRoutes sets up the Fiber routes for user management
-func RegisterRoutes(app *fiber.App, db *sql.DB, jwtConfig config.JWTConfig) {
+func RegisterRoutes(app *fiber.App, db *sql.DB, jwtSecret string) {
 	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
-	authService := service.NewAuthService(userRepo, jwtConfig.Secret)
+	authService := service.NewAuthService(userRepo, jwtSecret)
 	authHandler := handler.NewAuthHandler(authService)
 
 	adminService := service.NewAdminService(userRepo)
 	adminHandler := handler.NewAdminHandler(adminService)
 
-	
 	authMiddleware := handler.NewAuthMiddleware(authService)
 
 	// Authentication routes

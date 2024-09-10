@@ -20,7 +20,9 @@ WORKDIR /app/cmd
 RUN go build -o main .
 
 # Expose the application port
-EXPOSE 8080
+EXPOSE 3000
+EXPOSE 3001
+
 
 # Run the application
 CMD ["./main"]

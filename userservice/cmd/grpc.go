@@ -5,22 +5,14 @@ import (
 	"log"
 	"net"
 
-	"github.com/sir-shalahuddin/grpc-learn/userservice/config"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/repository"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/server"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/service"
-	pb "github.com/sir-shalahuddin/grpc-learn/userservice/proto"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/setup"
 	"google.golang.org/grpc"
 )
 
 // StartGRPCServer initializes and starts the gRPC server
-func StartGRPCServer(db *sql.DB, jwtConfig config.JWTConfig) {
+func StartGRPCServer(db *sql.DB, port string, jwtSecret string) {
 
-	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo, jwtConfig.Secret)
-	authServer := server.NewAuthServiceServer(authService)
-
-	lis, err := net.Listen("tcp", "localhost:3001")
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -29,8 +21,8 @@ func StartGRPCServer(db *sql.DB, jwtConfig config.JWTConfig) {
 	grpcServer := grpc.NewServer()
 
 	// Register AuthService routes
-	pb.RegisterAuthServiceServer(grpcServer, authServer)
-	log.Printf("gRPC server listening on %s", ":3001")
+	setup.GRPCServer(grpcServer, db, jwtSecret)
+	log.Printf("gRPC server listening on %s", ":"+port)
 
 	// Start the gRPC server
 	if err := grpcServer.Serve(lis); err != nil {

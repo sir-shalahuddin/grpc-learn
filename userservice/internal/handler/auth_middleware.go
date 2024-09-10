@@ -5,20 +5,28 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/models"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/response"
 )
 
-// AuthMiddleware struct holds the user service and JWT config
+// AuthService interface defines methods for authentication and authorization
+type AuthMiddlewareService interface {
+	ValidateToken(tokenStr string) (uuid.UUID, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+}
+
+// authMiddleware struct holds the AuthService instance
 type authMiddleware struct {
-	authService AuthService
+	service AuthMiddlewareService
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware instance
-func NewAuthMiddleware(authService AuthService) *authMiddleware {
-	return &authMiddleware{authService: authService}
+func NewAuthMiddleware(service AuthMiddlewareService) *authMiddleware {
+	return &authMiddleware{service: service}
 }
 
-// AuthMiddleware provides JWT validation and role-based access control
+// Protected provides JWT validation and role-based access control
 func (h *authMiddleware) Protected(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
@@ -33,15 +41,15 @@ func (h *authMiddleware) Protected(allowedRoles ...string) fiber.Handler {
 		}
 
 		// Parse and validate the JWT token
-		userID, err := h.authService.ValidateToken(tokenString)
+		userID, err := h.service.ValidateToken(tokenString)
 		if err != nil {
-			return response.HandleError(c, nil, "Invalid or expired JWT", fiber.StatusUnauthorized)
+			return response.HandleError(c, err, "Invalid or expired JWT", fiber.StatusUnauthorized)
 		}
 
 		// Retrieve the user
-		user, err := h.authService.GetUserByID(context.Background(), userID)
+		user, err := h.service.GetUserByID(context.Background(), userID)
 		if err != nil {
-			return response.HandleError(c, nil, "Failed to fetch user detail", fiber.StatusInternalServerError)
+			return response.HandleError(c, err, "Failed to fetch user details", fiber.StatusInternalServerError)
 		}
 
 		// Check if the user has the required role
@@ -49,11 +57,13 @@ func (h *authMiddleware) Protected(allowedRoles ...string) fiber.Handler {
 			return response.HandleError(c, nil, "Access forbidden: insufficient permissions", fiber.StatusForbidden)
 		}
 
-		c.Locals("id", userID) // Pass the user to the next handler
+		// Pass the user ID to the next handler
+		c.Locals("id", userID)
 		return c.Next()
 	}
 }
 
+// hasAccess checks if the user's role is in the allowedRoles list
 func hasAccess(userRole string, allowedRoles []string) bool {
 	if len(allowedRoles) == 0 {
 		allowedRoles = append(allowedRoles, "user")

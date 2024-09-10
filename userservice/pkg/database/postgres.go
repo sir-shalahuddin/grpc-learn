@@ -41,7 +41,7 @@ func NewDB(config config.DBConfig) (*sql.DB, error) {
 		db.Close()
 		return nil, err
 	}
-	log.Println("Database Connected " + DB_URI)
+	log.Println("Database Connected")
 
 	return db, nil
 }

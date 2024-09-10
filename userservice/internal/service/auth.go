@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -14,7 +13,7 @@ import (
 )
 
 const (
-	AccessTokenExpiry  = time.Minute * 60   // 15 minutes for access tokens
+	AccessTokenExpiry  = time.Minute * 60   // 60 minutes for access tokens
 	RefreshTokenExpiry = time.Hour * 24 * 7 // 7 days for refresh tokens
 )
 
@@ -25,32 +24,38 @@ var (
 	ErrInsufficientAccess = errors.New("access forbidden: insufficient permissions")
 )
 
+type AuthRepository interface {
+	CreateUser(ctx context.Context, user *models.User) error
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+}
+
 type authService struct {
-	userRepo  UserRepository
+	repo      AuthRepository
 	jwtSecret string
 }
 
-func NewAuthService(userRepo UserRepository, jwtSecret string) *authService {
+func NewAuthService(repo AuthRepository, jwtSecret string) *authService {
 	return &authService{
-		userRepo:  userRepo,
+		repo:      repo,
 		jwtSecret: jwtSecret,
 	}
 }
 
+// Register a new user with email, password, and name.
 func (s *authService) Register(ctx context.Context, email, password, name string) error {
-
-	registeredUser, err := s.userRepo.GetUserByEmail(ctx, email)
+	registeredUser, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("service: error checking email existence: %w", err)
+	}
 	if registeredUser != nil {
 		return ErrDuplicateEmail
-	}
-	if err != nil {
-		return err
 	}
 
 	// Hash the password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return fmt.Errorf("service: error hashing password: %w", err)
 	}
 
 	user := models.User{
@@ -59,19 +64,20 @@ func (s *authService) Register(ctx context.Context, email, password, name string
 		Name:     name,
 	}
 
-	err = s.userRepo.CreateUser(context.Background(), &user)
+	err = s.repo.CreateUser(ctx, &user)
 	if err != nil {
-		return err
+		return fmt.Errorf("service: error creating user: %w", err)
 	}
 
 	return nil
 }
 
+// Login user with email and password, returning access and refresh tokens.
 func (s *authService) Login(ctx context.Context, email, password string) (map[string]string, error) {
 	// Retrieve the user
-	user, err := s.userRepo.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: error retrieving user: %w", err)
 	}
 	if user == nil {
 		return nil, ErrInvalidCredentials
@@ -86,13 +92,13 @@ func (s *authService) Login(ctx context.Context, email, password string) (map[st
 	// Generate Access Token
 	accessToken, err := s.generateToken(user.UserID, "access")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: error generating access token: %w", err)
 	}
 
 	// Generate Refresh Token
 	refreshToken, err := s.generateToken(user.UserID, "refresh")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: error generating refresh token: %w", err)
 	}
 
 	tokens := map[string]string{
@@ -103,52 +109,55 @@ func (s *authService) Login(ctx context.Context, email, password string) (map[st
 	return tokens, nil
 }
 
+// RefreshToken generates a new access token using the provided refresh token.
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (string, error) {
 	// Parse and validate the refresh token
-	log.Printf(refreshToken)
 	userID, err := s.ValidateToken(refreshToken)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service: error validating refresh token: %w", err)
 	}
 
 	// Generate a new access token
 	newAccessToken, err := s.generateToken(userID, "access")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service: error generating new access token: %w", err)
 	}
 
 	return newAccessToken, nil
 }
 
+// GetUserByID retrieves a user by their ID.
 func (s *authService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	user, err := s.userRepo.GetUserByID(ctx, id)
+	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: error retrieving user by ID: %w", err)
 	}
 	return user, nil
 }
 
+// generateToken creates a JWT token with the specified userID and tokenType.
 func (s *authService) generateToken(userID uuid.UUID, tokenType string) (string, error) {
-	claims := jwt.MapClaims{
-		"user_id": userID.String(),
-		"exp":     time.Now().Add(time.Minute * 15).Unix(), // Default to access token expiry
+	expiry := AccessTokenExpiry
+	if tokenType == "refresh" {
+		expiry = RefreshTokenExpiry
 	}
 
-	if tokenType == "refresh" {
-		// Set longer expiration for refresh token
-		claims["exp"] = time.Now().Add(time.Hour * 24 * 7).Unix() // Example: 7 days
+	claims := jwt.MapClaims{
+		"user_id": userID.String(),
+		"exp":     time.Now().Add(expiry).Unix(),
 	}
 
 	// Create the token with claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("service: error signing token: %w", err)
 	}
 
 	return signedToken, nil
 }
 
+// ValidateToken parses and validates the JWT token, returning the userID if valid.
 func (s *authService) ValidateToken(tokenStr string) (uuid.UUID, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		// Validate the signing method and return the secret
@@ -159,7 +168,7 @@ func (s *authService) ValidateToken(tokenStr string) (uuid.UUID, error) {
 	})
 
 	if err != nil {
-		return uuid.UUID{}, err
+		return uuid.UUID{}, fmt.Errorf("service: error parsing token: %w", err)
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -170,27 +179,11 @@ func (s *authService) ValidateToken(tokenStr string) (uuid.UUID, error) {
 
 		id, err := uuid.Parse(userID)
 		if err != nil {
-			return uuid.UUID{}, errors.New("failed to parse user id")
+			return uuid.UUID{}, fmt.Errorf("service: failed to parse user ID: %w", err)
 		}
 
 		return id, nil
 	}
 
 	return uuid.UUID{}, ErrInvalidToken
-}
-
-func (s *authService) HasAccess(userRole string, allowedRoles []string) bool {
-	if len(allowedRoles) == 0 {
-		allowedRoles = append(allowedRoles, "user")
-	}
-	if userRole == "super admin" {
-		return true
-	}
-
-	for _, role := range allowedRoles {
-		if role == userRole {
-			return true
-		}
-	}
-	return false
 }

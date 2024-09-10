@@ -17,7 +17,10 @@ func main() {
 		log.Println("no env provided")
 	}
 
-	AppConfig := config.AppConfig{Port: config.GetEnv("APP_PORT")}
+	AppConfig := config.AppConfig{
+		GRPCPort: config.GetEnv("GRPC_PORT"),
+		RESTPort: config.GetEnv("REST_PORT"),
+	}
 	DBConfig := config.DBConfig{
 		Host: config.GetEnv("DB_HOST"),
 		Port: config.GetEnv("DB_PORT"),
@@ -35,10 +38,10 @@ func main() {
 	}
 
 	// Start REST server in a separate goroutine
-	go StartRESTServer(db, AppConfig, JWTConfig)
+	go StartRESTServer(db, AppConfig.RESTPort, JWTConfig.Secret)
 
 	// Start gRPC server in a separate goroutine
-	go StartGRPCServer(db, JWTConfig)
+	go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
 
 	// Handle termination signals to gracefully shutdown servers
 	sigs := make(chan os.Signal, 1)

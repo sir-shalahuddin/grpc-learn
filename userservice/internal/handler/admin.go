@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -28,16 +29,17 @@ func NewAdminHandler(adminService AdminService) *adminHandler {
 func (h *adminHandler) ListUsers(c *fiber.Ctx) error {
 	users, err := h.adminService.ListUsers(context.Background())
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to list users")
+		log.Printf("Error listing users: %v", err)
+		return response.HandleError(c, err, "Failed to list users", fiber.StatusInternalServerError)
 	}
 
-	return response.HandleSuccess(c, "retrieve list user success", users, fiber.StatusOK)
+	return response.HandleSuccess(c, "Retrieve list of users successful", users, fiber.StatusOK)
 }
 
 func (h *adminHandler) UpdateUserRoles(c *fiber.Ctx) error {
 	userID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.HandleError(c, err, "failed to parse id : invalid request params", fiber.StatusBadRequest)
+		return response.HandleError(c, err, "Invalid request parameters", fiber.StatusBadRequest)
 	}
 
 	var req struct {
@@ -45,29 +47,31 @@ func (h *adminHandler) UpdateUserRoles(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		return response.HandleError(c, err, "invalid request payload", fiber.StatusBadRequest)
+		return response.HandleError(c, err, "Invalid request payload", fiber.StatusBadRequest)
 	}
 
-	if err := h.adminService.UpdateUserRoles(context.Background(), userID, req.Roles); err != nil {
-		// fmt.Println(err)
+	err = h.adminService.UpdateUserRoles(context.Background(), userID, req.Roles)
+	if err != nil {
 		if errors.Is(err, service.ErrInsufficientPermissions) {
-			return response.HandleError(c, err, "", fiber.StatusForbidden)
+			return response.HandleError(c, err, "Insufficient permissions", fiber.StatusForbidden)
 		}
-		return response.HandleError(c, err, "failed to update user roles", fiber.StatusInternalServerError)
+		log.Printf("Error updating user roles: %v", err)
+		return response.HandleError(c, err, "Failed to update user roles", fiber.StatusInternalServerError)
 	}
-	return response.HandleSuccess(c, "update user role success", nil, fiber.StatusOK)
+	return response.HandleSuccess(c, "Update user role successful", nil, fiber.StatusOK)
 }
 
 func (h *adminHandler) DeleteUser(c *fiber.Ctx) error {
-
 	userID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
-		return response.HandleError(c, err, "failed to parse id : invalid request params", fiber.StatusBadRequest)
+		return response.HandleError(c, err, "Invalid request parameters", fiber.StatusBadRequest)
 	}
 
-	if err := h.adminService.DeleteUser(context.Background(), userID); err != nil {
-		return response.HandleError(c, err, "failed to delete user", fiber.StatusInternalServerError)
+	err = h.adminService.DeleteUser(context.Background(), userID)
+	if err != nil {
+		log.Printf("Error deleting user: %v", err)
+		return response.HandleError(c, err, "Failed to delete user", fiber.StatusInternalServerError)
 	}
 
-	return response.HandleSuccess(c, "delete user success", nil, fiber.StatusOK)
+	return response.HandleSuccess(c, "Delete user successful", nil, fiber.StatusOK)
 }
