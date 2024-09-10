@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option go_package = "github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/proto/auth/auth.proto";
+
+
+service AuthService {
+  rpc GetUserByID(GetUserByIDRequest) returns (GetUserByIDResponse);
+
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message GetUserByIDRequest {
+  string user_id = 1; // User ID in UUID format.
+}
+
+message GetUserByIDResponse {
+  User user = 1; // User object.
+}
+
+message ValidateTokenRequest {
+  string token = 1; // JWT token string.
+}
+
+message ValidateTokenResponse {
+  string user_id = 1; // User ID if the token is valid.
+}
+
+message User {
+  string user_id = 1;    // User ID in UUID format.
+  string email = 2;      // User's email address.
+  string name = 3;       // User's name.
+  string role = 4;       // User's role.
+}
