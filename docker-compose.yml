@@ -1,0 +1,91 @@
+version: '3.8'
+services:
+  # BookService with its own PostgreSQL DB
+  bookservice:
+    build: ./bookservice
+    ports:
+      - "50051:50051"
+    depends_on:
+      - bookdb
+      - book-migrate
+
+  book-migrate:
+    image: migrate/migrate
+    command: [
+      "-path", "/migrations", 
+      "-database", "postgres://postgres:password@bookdb:5432/book_db?sslmode=disable", 
+      "up"
+    ]
+    volumes:
+      - ./bookservice/migrations:/migrations
+    depends_on:
+      - bookdb
+
+  bookdb:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: book_db
+    ports:
+      - "5433:5432"
+
+  # BookCategoryService with its own PostgreSQL DB
+  bookcategoryservice:
+    build: ./bookcategoryservice
+    ports:
+      - "50052:50052"
+    depends_on:
+      - bookcategorydb
+      - category-migrate
+
+  category-migrate:
+    image: migrate/migrate
+    command: [
+      "-path", "/migrations", 
+      "-database", "postgres://postgres:password@bookcategorydb:5432/category_db?sslmode=disable", 
+      "up"
+    ]
+    volumes:
+      - ./bookcategoryservice/migrations:/migrations
+    depends_on:
+      - bookcategorydb
+
+  bookcategorydb:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: category_db
+    ports:
+      - "5434:5432"
+
+  # AuthService with its own PostgreSQL DB
+  userservice:
+    build: ./userservice
+    ports:
+      - "50053:50053"
+    depends_on:
+      - userdb
+      - user-migrate
+
+  user-migrate:
+    image: migrate/migrate
+    command: [
+      "-path", "/migrations", 
+      "-database", "postgres://postgres:password@userdb:5432/user_db?sslmode=disable", 
+      "up"
+    ]
+    volumes:
+      - ./userservice/migrations:/migrations
+    depends_on:
+      - userdb
+
+  userdb:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: user_db
+    ports:
+      - "5435:5432"

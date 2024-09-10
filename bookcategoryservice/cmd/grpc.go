@@ -5,13 +5,12 @@ import (
 	"log"
 	"net"
 
-	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/setup"
+	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/internal/setup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 // StartGRPCServer initializes and starts the gRPC server
-func StartGRPCServer(db *sql.DB, port string, jwtSecret string) {
+func StartGRPCServer(db *sql.DB, port string) {
 
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
@@ -21,10 +20,8 @@ func StartGRPCServer(db *sql.DB, port string, jwtSecret string) {
 	// Create a new gRPC server
 	grpcServer := grpc.NewServer()
 
-	reflection.Register(grpcServer)
-
 	// Register AuthService routes
-	setup.GRPCServer(grpcServer, db, jwtSecret)
+	setup.GRPCServer(grpcServer, db)
 	log.Printf("gRPC server listening on %s", ":"+port)
 
 	// Start the gRPC server

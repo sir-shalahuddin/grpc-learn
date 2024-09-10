@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/proto";
+
+service BookCategoryService {
+    rpc GetCategories (GetCategoriesRequest) returns (CategoryListResponse);
+    rpc GetCategoryByID (GetCategoryByIDRequest) returns (CategoryResponse);
+}
+
+message GetCategoriesRequest {}
+
+message GetCategoryByIDRequest {
+    string id = 1; // UUID for the category ID
+}
+
+message CategoryResponse {
+    string id = 1;
+    string name = 2;
+}
+
+message CategoryListResponse {
+    repeated CategoryResponse categories = 1;
+}
