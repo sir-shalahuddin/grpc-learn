@@ -23,7 +23,8 @@ type JWTConfig struct {
 }
 
 type GRPCConfig struct {
-	AuthAddress string
+	AuthAddress     string
+	CategoryAddress string
 }
 
 func GetEnv(key string) string {

@@ -19,37 +19,33 @@ var (
 type BorrowingRecordRepository interface {
 	CreateBorrowingRecord(ctx context.Context, tx *sql.Tx, record *models.BorrowingRecord) error
 	GetBorrowingRecordByID(ctx context.Context, id uuid.UUID) (*models.BorrowingRecord, error)
-	UpdateBorrowingRecord(ctx context.Context, record *models.BorrowingRecord) error
+	UpdateBorrowingRecord(ctx context.Context, tx *sql.Tx, record *models.BorrowingRecord) error
 	DeleteBorrowingRecord(ctx context.Context, id uuid.UUID) error
-	ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]*models.BorrowingRecord, error)
-	BeginTx(ctx context.Context) (*sql.Tx, error)
-	Commit(tx *sql.Tx) error
-	Rollback(tx *sql.Tx) error
-	GetBookByID(ctx context.Context, bookID uuid.UUID) (*models.Book, error)
-	UpdateBook(ctx context.Context, tx *sql.Tx, book *models.Book) error
+	ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]models.BorrowingRecord, error)
 }
 
 type TxRepository interface {
+	BeginTx(ctx context.Context) (*sql.Tx, error)
+	Commit(tx *sql.Tx) error
+	Rollback(tx *sql.Tx) error
 }
 
 type borrowingRecordService struct {
-	repo BorrowingRecordRepository
+	repo     BorrowingRecordRepository
+	txRepo   TxRepository
+	bookRepo BookRepository
 }
 
-func NewBorrowingRecordService(repo BorrowingRecordRepository) *borrowingRecordService {
+func NewBorrowingRecordService(repo BorrowingRecordRepository, txRepo TxRepository, bookRepo BookRepository) *borrowingRecordService {
 	return &borrowingRecordService{
-		repo: repo,
+		repo:     repo,
+		txRepo:   txRepo,
+		bookRepo: bookRepo,
 	}
 }
 
 func (s *borrowingRecordService) BorrowBook(ctx context.Context, bookID, userID uuid.UUID, dueDate *time.Time) error {
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		return err
-	}
-	defer s.repo.Rollback(tx)
-
-	book, err := s.repo.GetBookByID(ctx, bookID)
+	book, err := s.bookRepo.GetBookByID(ctx, bookID)
 	if err != nil {
 		return err
 	}
@@ -65,54 +61,61 @@ func (s *borrowingRecordService) BorrowBook(ctx context.Context, bookID, userID 
 		BorrowedAt: time.Now(),
 		DueDate:    dueDate,
 	}
+
+	tx, err := s.txRepo.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer s.txRepo.Rollback(tx)
+
 	if err := s.repo.CreateBorrowingRecord(ctx, tx, record); err != nil {
 		return err
 	}
 
 	// Update book stock
 	book.Stock--
-	if err := s.repo.UpdateBook(ctx, tx, book); err != nil {
+	if err := s.bookRepo.UpdateBook(ctx, tx, book); err != nil {
 		return err
 	}
 
-	return s.repo.Commit(tx)
+	return s.txRepo.Commit(tx)
 }
 
 func (s *borrowingRecordService) ReturnBook(ctx context.Context, recordID uuid.UUID) error {
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		return err
-	}
-	defer s.repo.Rollback(tx)
-
 	record, err := s.repo.GetBorrowingRecordByID(ctx, recordID)
 	if err != nil {
 		return err
 	}
 	if record == nil {
-		return fmt.Errorf("borrowing record not found")
+		return ErrBorrowingRecordNotFound
 	}
 
-	book, err := s.repo.GetBookByID(ctx, record.BookID)
+	book, err := s.bookRepo.GetBookByID(ctx, record.BookID)
 	if err != nil {
 		return err
 	}
 
 	// Update record
 	record.ReturnedAt = time.Now()
-	if err := s.repo.UpdateBorrowingRecord(ctx, record); err != nil {
+	tx, err := s.txRepo.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer s.txRepo.Rollback(tx)
+
+	if err := s.repo.UpdateBorrowingRecord(ctx, tx, record); err != nil {
 		return err
 	}
 
 	// Update book stock
 	book.Stock++
-	if err := s.repo.UpdateBook(ctx, nil, book); err != nil {
+	if err := s.bookRepo.UpdateBook(ctx, tx, book); err != nil {
 		return err
 	}
 
-	return s.repo.Commit(tx)
+	return s.txRepo.Commit(tx)
 }
 
-func (s *borrowingRecordService) ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]*models.BorrowingRecord, error) {
+func (s *borrowingRecordService) ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]models.BorrowingRecord, error) {
 	return s.repo.ListBorrowingRecordsByBookID(ctx, bookID)
 }

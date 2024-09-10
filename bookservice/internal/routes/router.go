@@ -8,25 +8,35 @@ import (
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/repository"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/service"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/proto/authservice"
+	pb "github.com/sir-shalahuddin/grpc-learn/bookservice/proto/categoryservice"
 )
 
 // RegisterRoutes sets up the Fiber routes for user management
-func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc authservice.AuthServiceClient) {
+func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc authservice.AuthServiceClient, ctgSvc pb.BookCategoryServiceClient) {
+	txRepo := repository.NewTxRepository(db)
 
 	bookRepo := repository.NewBookRepository(db)
-	bookService := service.NewBookService(bookRepo)
+	ctgRepo := repository.NewCategoryRepository(ctgSvc)
+	bookService := service.NewBookService(bookRepo, ctgRepo)
 	bookHandler := handler.NewBookHandler(bookService)
 
 	authRepo := repository.NewAuthRepository(authSvc)
 	authService := service.NewAuthService(authRepo)
 	authMiddleware := handler.NewAuthMiddleware(authService)
 
+	borrowingRecordRepo := repository.NewBorrowingRecordRepository(db)
+	borrowingRecordService := service.NewBorrowingRecordService(borrowingRecordRepo, txRepo, bookRepo)
+	borrowingRecordHandler := handler.NewBorrowingRecordHandler(borrowingRecordService)
+
 	books := app.Group("/books")
 
-	// Define the routes
-	books.Post("/", authMiddleware.Protected("librarian"), bookHandler.CreateBook)      // Create a new book
-	books.Get("/:id", bookHandler.GetBookByID)                                          // Get a book by ID
-	books.Put("/:id", authMiddleware.Protected("librarian"), bookHandler.UpdateBook)    // Update a book by ID
-	books.Delete("/:id", authMiddleware.Protected("librarian"), bookHandler.DeleteBook) // Delete a book by ID
+	books.Post("/", authMiddleware.Protected("librarian"), bookHandler.CreateBook)
+	books.Get("/:id", bookHandler.GetBookByID)
+	books.Put("/:id", authMiddleware.Protected("librarian"), bookHandler.UpdateBook)
+	books.Delete("/:id", authMiddleware.Protected("librarian"), bookHandler.DeleteBook)
 	books.Get("/", bookHandler.ListBooks)
+
+	books.Post("/:id/borrow", authMiddleware.Protected("user"), borrowingRecordHandler.BorrowBook)
+	books.Put("/:id/return", authMiddleware.Protected("user"), borrowingRecordHandler.ReturnBook)
+	books.Get("/:id/records", authMiddleware.Protected("librarian"), borrowingRecordHandler.ListBorrowingRecords)
 }

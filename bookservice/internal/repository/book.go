@@ -50,10 +50,8 @@ func (r *BookRepository) UpdateBook(ctx context.Context, tx *sql.Tx, book *model
 	var err error
 
 	if tx != nil {
-		// If a transaction is provided, use it.
 		result, err = tx.ExecContext(ctx, query, book.Title, book.Author, book.ISBN, book.PublishedDate, book.CategoryID, book.Stock, book.AddedBy, time.Now(), book.ID, book.Version)
 	} else {
-		// Otherwise, use the repository's database connection.
 		result, err = r.db.ExecContext(ctx, query, book.Title, book.Author, book.ISBN, book.PublishedDate, book.CategoryID, book.Stock, book.AddedBy, time.Now(), book.ID, book.Version)
 	}
 

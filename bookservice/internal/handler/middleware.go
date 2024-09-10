@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,7 +41,6 @@ func (h *authMiddleware) Protected(allowedRoles ...string) fiber.Handler {
 		// Parse and validate the JWT token
 		userID, err := h.authService.ValidateToken(context.Background(), tokenString)
 		if err != nil {
-			fmt.Println(err)
 			return response.HandleError(c, nil, "Invalid or expired JWT", fiber.StatusUnauthorized)
 		}
 
@@ -57,7 +55,7 @@ func (h *authMiddleware) Protected(allowedRoles ...string) fiber.Handler {
 			return response.HandleError(c, nil, "Access forbidden: insufficient permissions", fiber.StatusForbidden)
 		}
 
-		c.Locals("id", userID) // Pass the user to the next handler
+		c.Locals("id", userID)
 		return c.Next()
 	}
 }

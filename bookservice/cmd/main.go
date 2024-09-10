@@ -31,7 +31,8 @@ func main() {
 	}
 
 	GRPCConfig := config.GRPCConfig{
-		AuthAddress: config.GetEnv("AUTH_ADDRESS"),
+		AuthAddress:     config.GetEnv("AUTH_ADDRESS"),
+		CategoryAddress: config.GetEnv("CTG_ADDRESS"),
 	}
 
 	db, err := db.NewDB(DBConfig)
@@ -39,13 +40,18 @@ func main() {
 		panic(err)
 	}
 
-	grpcClients, err := grpcclient.NewGRPCClients(GRPCConfig.AuthAddress)
+	authClients, err := grpcclient.NewAuthClients(GRPCConfig.AuthAddress)
+	if err != nil {
+		panic(err)
+	}
+
+	categoryClients, err := grpcclient.NewCategoryClients(GRPCConfig.CategoryAddress)
 	if err != nil {
 		panic(err)
 	}
 
 	// Start REST server in a separate goroutine
-	go StartRESTServer(db, grpcClients, AppConfig.RESTPort)
+	go StartRESTServer(db, authClients, categoryClients, AppConfig.RESTPort)
 
 	// Start gRPC server in a separate goroutine
 	// go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)

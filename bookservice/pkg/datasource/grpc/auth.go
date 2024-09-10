@@ -1,18 +1,17 @@
 package grpcclient
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 
 	pb "github.com/sir-shalahuddin/grpc-learn/bookservice/proto/authservice"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
-func NewGRPCClients(address string) (pb.AuthServiceClient, error) {
-	conn, err := grpc.NewClient(
-		address, grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+func NewAuthClients(address string) (pb.AuthServiceClient, error) {
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC server at %s: %w", address, err)
 	}

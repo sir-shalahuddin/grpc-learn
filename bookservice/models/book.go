@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Book represents the structure of the book entity in the system.
 type Book struct {
 	ID            uuid.UUID  `json:"id"`             // Unique identifier for the book
 	Title         string     `json:"title"`          // Title of the book
@@ -14,6 +13,7 @@ type Book struct {
 	ISBN          string     `json:"isbn"`           // ISBN number of the book
 	PublishedDate *time.Time `json:"published_date"` // Date when the book was published
 	CategoryID    uuid.UUID  `json:"category_id"`    // ID of the category the book belongs to
+	CategoryName  string     `json:"category_name"`  // Name of the category the book belongs to
 	Stock         int        `json:"stock"`          // Number of copies available
 	AddedBy       uuid.UUID  `json:"added_by"`       // User ID of the librarian who added the book
 	CreatedAt     *time.Time `json:"created_at"`     // Timestamp when the book was created

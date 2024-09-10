@@ -53,20 +53,20 @@ func (r *BorrowingRecordRepository) DeleteBorrowingRecord(ctx context.Context, i
 	return err
 }
 
-func (r *BorrowingRecordRepository) ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]*models.BorrowingRecord, error) {
+func (r *BorrowingRecordRepository) ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]models.BorrowingRecord, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, book_id, user_id, borrowed_at, due_date, returned_at FROM borrowing_records WHERE book_id = $1`, bookID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var records []*models.BorrowingRecord
+	var records []models.BorrowingRecord
 	for rows.Next() {
 		var record models.BorrowingRecord
 		if err := rows.Scan(&record.ID, &record.BookID, &record.UserID, &record.BorrowedAt, &record.DueDate, &record.ReturnedAt); err != nil {
 			return nil, err
 		}
-		records = append(records, &record)
+		records = append(records, record)
 	}
 	return records, nil
 }

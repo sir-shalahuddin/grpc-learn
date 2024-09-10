@@ -27,8 +27,10 @@ func NewBookHandler(bookService BookService) *bookHandler {
 }
 
 func (h *bookHandler) CreateBook(c *fiber.Ctx) error {
-	userID := c.Locals("id").(uuid.UUID)
-
+	userID, err := uuid.Parse(c.Locals("id").(string))
+	if err != nil {
+		return response.HandleError(c, err, "failed to create book", fiber.StatusInternalServerError)
+	}
 	var req struct {
 		Title         string     `json:"title"`
 		Author        string     `json:"author"`
@@ -53,8 +55,7 @@ func (h *bookHandler) CreateBook(c *fiber.Ctx) error {
 		AddedBy:       userID,
 	}
 
-	err := h.bookService.CreateBook(c.Context(), book)
-	if err != nil {
+	if err := h.bookService.CreateBook(c.Context(), book); err != nil {
 		return response.HandleError(c, err, "failed to create book", fiber.StatusInternalServerError)
 	}
 
