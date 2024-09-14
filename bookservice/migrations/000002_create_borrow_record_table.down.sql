@@ -1,0 +1,1 @@
+DROP TABLE borrowing_records;
