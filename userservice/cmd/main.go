@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -20,6 +21,7 @@ func main() {
 	AppConfig := config.AppConfig{
 		GRPCPort: config.GetEnv("GRPC_PORT"),
 		RESTPort: config.GetEnv("REST_PORT"),
+		Mode:     config.GetEnv("SERVER_MODE"),
 	}
 	DBConfig := config.DBConfig{
 		Host: config.GetEnv("DB_HOST"),
@@ -37,11 +39,16 @@ func main() {
 		panic(err)
 	}
 
+	mode := strings.ToLower(AppConfig.Mode)
 	// Start REST server in a separate goroutine
-	go StartRESTServer(db, AppConfig.RESTPort, JWTConfig.Secret)
+	if mode == "rest" || mode == "hybrid" {
+		go StartRESTServer(db, AppConfig.RESTPort, JWTConfig.Secret)
+	}
 
 	// Start gRPC server in a separate goroutine
-	go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
+	if mode == "grpc" || mode == "hybrid" {
+		go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
+	}
 
 	// Handle termination signals to gracefully shutdown servers
 	sigs := make(chan os.Signal, 1)

@@ -8,6 +8,7 @@ import (
 type AppConfig struct {
 	GRPCPort string
 	RESTPort string
+	Mode     string
 }
 
 type DBConfig struct {
