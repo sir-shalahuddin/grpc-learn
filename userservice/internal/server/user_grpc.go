@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/service"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/models"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/models"
 	pb "github.com/sir-shalahuddin/grpc-learn/userservice/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

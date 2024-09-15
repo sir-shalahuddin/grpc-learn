@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/models"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/models"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/response"
 )
 

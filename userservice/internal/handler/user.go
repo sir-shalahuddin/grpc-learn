@@ -2,41 +2,51 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/sir-shalahuddin/grpc-learn/userservice/models"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/dto"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/service"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/response"
 )
 
 type UserService interface {
-	GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error)
-	UpdateUser(ctx context.Context, userID uuid.UUID, name, email string) error
+	GetUserByID(ctx context.Context, userID uuid.UUID) (dto.GetProfileResponse, error)
+	UpdateUser(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) error
 }
 
 type userHandler struct {
 	userService UserService
+	validate    *validator.Validate
 }
 
 func NewUserHandler(userService UserService) *userHandler {
-	return &userHandler{userService: userService}
+	validate := validator.New()
+	validate.RegisterValidation("password", ValidatePassword)
+
+	return &userHandler{
+		userService: userService,
+		validate:    validate}
 }
 
 // GetProfile retrieves the profile of the currently authenticated user.
 func (h *userHandler) GetProfile(c *fiber.Ctx) error {
 	userID, ok := c.Locals("id").(uuid.UUID)
 	if !ok {
+		log.Println("invalid user ID")
 		return response.HandleError(c, fmt.Errorf("invalid user ID"), "failed to retrieve user", fiber.StatusInternalServerError)
 	}
 
 	user, err := h.userService.GetUserByID(c.Context(), userID)
 	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			return response.HandleError(c, err, "user not found", fiber.StatusNotFound)
+		}
 		return response.HandleError(c, err, "failed to retrieve user", fiber.StatusInternalServerError)
-	}
-
-	if user == nil {
-		return response.HandleError(c, fmt.Errorf("user not found"), "user not found", fiber.StatusNotFound)
 	}
 
 	return response.HandleSuccess(c, "get profile success", user, fiber.StatusOK)
@@ -46,20 +56,26 @@ func (h *userHandler) GetProfile(c *fiber.Ctx) error {
 func (h *userHandler) UpdateProfile(c *fiber.Ctx) error {
 	userID, ok := c.Locals("id").(uuid.UUID)
 	if !ok {
+		log.Println("invalid user ID")
 		return response.HandleError(c, fmt.Errorf("invalid user ID"), "failed to update profile", fiber.StatusInternalServerError)
 	}
 
-	var req struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
-	}
+	var req dto.UpdateProfileRequest
 
 	if err := c.BodyParser(&req); err != nil {
 		return response.HandleError(c, err, "invalid request payload", fiber.StatusBadRequest)
 	}
 
-	err := h.userService.UpdateUser(c.Context(), userID, req.Name, req.Email)
+	if err := h.validate.Struct(req); err != nil {
+		return response.HandleError(c, err, "invalid payload", fiber.StatusBadRequest)
+	}
+
+	err := h.userService.UpdateUser(c.Context(), userID, req)
 	if err != nil {
+		if errors.Is(err, service.ErrDuplicateEmail) {
+			return response.HandleError(c, err, "", fiber.StatusConflict)
+		}
+		log.Printf("internal error: failed to update user: %v", err)
 		return response.HandleError(c, err, "failed to update user", fiber.StatusInternalServerError)
 	}
 

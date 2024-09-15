@@ -1,4 +1,4 @@
-package models
+package dto
 
 import (
 	"time"
@@ -6,12 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type User struct {
+type UpdateProfileRequest struct {
+	Name  string `json:"name" validate:"required"`
+	Email string `json:"email" validate:"required,email"`
+}
+
+type GetProfileResponse struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
-	Password  string    `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Role      string    `json:"role"`
 }
