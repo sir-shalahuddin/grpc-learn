@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -11,18 +10,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/dto"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/models"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	AccessTokenExpiry  = time.Minute * 60   // 60 minutes for access tokens
+	AccessTokenExpiry  = time.Minute * 10   // 10 minutes for access tokens
 	RefreshTokenExpiry = time.Hour * 24 * 7 // 7 days for refresh tokens
 )
 
 var (
 	ErrDuplicateEmail     = errors.New("email already registered")
 	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidToken       = errors.New("invalid or expired token")
 )
 
 type AuthRepository interface {
@@ -115,9 +114,9 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 // RefreshToken generates a new access token using the provided refresh token.
 func (s *authService) RefreshToken(ctx context.Context, req dto.RefreshTokenRequest) (dto.RefreshTokenResponse, error) {
 	// Parse and validate the refresh token
-	userID, err := s.ValidateToken(req.RefreshToken)
+	userID, err := auth.ValidateToken(req.RefreshToken, s.jwtSecret)
 	if err != nil {
-		return dto.RefreshTokenResponse{}, ErrInvalidToken
+		return dto.RefreshTokenResponse{}, auth.ErrInvalidToken
 	}
 
 	// Generate a new access token
@@ -161,37 +160,7 @@ func (s *authService) generateToken(userID uuid.UUID, tokenType string) (string,
 	return signedToken, nil
 }
 
-// ValidateToken parses and validates the JWT token, returning the userID if valid.
+// // ValidateToken parses and validates the JWT token, returning the userID if valid.
 func (s *authService) ValidateToken(tokenStr string) (uuid.UUID, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		// Validate the signing method and return the secret
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			log.Printf("[Service - ValidateToken] Unexpected signing method: %v", token.Header["alg"])
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(s.jwtSecret), nil
-	})
-
-	if err != nil {
-		log.Printf("[Service - ValidateToken] Parsing Token : %v", err)
-		return uuid.UUID{}, err
-	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID, ok := claims["user_id"].(string)
-		if !ok || userID == "" {
-			log.Printf("[Service - ValidateToken] Invalid user ID in token claims")
-			return uuid.UUID{}, errors.New("invalid user ID in token claims")
-		}
-
-		id, err := uuid.Parse(userID)
-		if err != nil {
-			log.Printf("[Service - ValidateToken] Error parsing uuid : %v", err)
-			return uuid.UUID{}, err
-		}
-
-		return id, nil
-	}
-
-	return uuid.UUID{}, ErrInvalidToken
+	return auth.ValidateToken(tokenStr, s.jwtSecret)
 }

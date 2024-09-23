@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/dto"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/service"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/auth"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/response"
 )
 
@@ -116,7 +117,7 @@ func (h *authHandler) RefreshToken(c *fiber.Ctx) error {
 
 	res, err := h.authService.RefreshToken(context.Background(), req)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidToken) {
+		if errors.Is(err, auth.ErrInvalidToken) {
 			return response.HandleError(c, err, "", fiber.StatusUnauthorized)
 		}
 		log.Printf("internal error: failed to refresh token: %v", err)

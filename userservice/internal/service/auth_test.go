@@ -11,6 +11,7 @@ import (
 
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/dto"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/models"
+	"github.com/sir-shalahuddin/grpc-learn/userservice/pkg/auth"
 )
 
 // MockAuthRepository adalah implementasi mock dari AuthRepository.
@@ -133,7 +134,7 @@ func TestRefreshToken_InvalidToken(t *testing.T) {
 		RefreshToken: "invalid-token",
 	})
 
-	if err != ErrInvalidToken {
+	if err != auth.ErrInvalidToken {
 		t.Errorf("expected ErrInvalidToken, got %v", err)
 	}
 }
