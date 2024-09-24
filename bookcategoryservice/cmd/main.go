@@ -21,13 +21,20 @@ func main() {
 	AppConfig := config.AppConfig{
 		GRPCPort: config.GetEnv("GRPC_PORT"),
 		RESTPort: config.GetEnv("REST_PORT"),
+		Mode:     config.GetEnv("SERVER_MODE"),
 	}
 	DBConfig := config.DBConfig{
-		Host: config.GetEnv("DB_HOST"),
-		Port: config.GetEnv("DB_PORT"),
-		User: config.GetEnv("DB_USER"),
-		Pass: config.GetEnv("DB_PASS"),
-		Name: config.GetEnv("DB_NAME"),
+		Host:                   config.GetEnv("DB_HOST"),
+		Port:                   config.GetEnv("DB_PORT"),
+		User:                   config.GetEnv("DB_USER"),
+		Pass:                   config.GetEnv("DB_PASS"),
+		Name:                   config.GetEnv("DB_NAME"),
+		InstanceConnectionName: config.GetEnv("INSTANCE_CONNECTION_NAME"),
+		UseUnixSocket:          config.GetEnvAsBool("USE_UNIX_SOCKET"),
+	}
+
+	JWTConfig := config.JWTConfig{
+		Secret: config.GetEnv("JWT_SECRET"),
 	}
 
 	GRPCConfig := config.GRPCConfig{
@@ -45,7 +52,7 @@ func main() {
 	}
 
 	// Start REST server in a separate goroutine
-	go StartRESTServer(db, grpcClients, AppConfig.RESTPort)
+	go StartRESTServer(db, grpcClients, AppConfig.RESTPort, JWTConfig.Secret)
 
 	// Start gRPC server in a separate goroutine
 	go StartGRPCServer(db, AppConfig.GRPCPort)

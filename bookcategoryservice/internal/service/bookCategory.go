@@ -3,15 +3,16 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/dto"
 	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/models"
 )
 
 type bookCategoryRepository interface {
-	Create(ctx context.Context, category *models.BookCategory) error
+	Create(ctx context.Context, name string) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.BookCategory, error)
+	GetByName(ctx context.Context, name string) (*models.BookCategory, error)
 	GetAll(ctx context.Context) ([]models.BookCategory, error)
 	Update(ctx context.Context, category *models.BookCategory) error
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -21,6 +22,10 @@ type bookCategoryService struct {
 	repo bookCategoryRepository
 }
 
+var (
+	ErrDuplicateCategory = errors.New("category already exist")
+)
+
 // NewBookCategoryService returns a new instance of BookCategoryService.
 func NewBookCategoryService(repo bookCategoryRepository) *bookCategoryService {
 	return &bookCategoryService{
@@ -28,67 +33,34 @@ func NewBookCategoryService(repo bookCategoryRepository) *bookCategoryService {
 	}
 }
 
-func (s *bookCategoryService) CreateCategory(ctx context.Context, name string) (uuid.UUID, error) {
-	if name == "" {
-		return uuid.Nil, errors.New("category name cannot be empty")
+func (s *bookCategoryService) CreateCategory(ctx context.Context, req dto.CreateBookCategoryRequest) (dto.CreateBookCategoryResponse, error) {
+	existCategory, err := s.repo.GetByName(ctx, req.Name)
+	if err != nil {
+		return dto.CreateBookCategoryResponse{}, err
+	}
+	if existCategory != nil {
+		return dto.CreateBookCategoryResponse{}, ErrDuplicateCategory
 	}
 
-	category := &models.BookCategory{
-		Name: name,
+	res, err := s.repo.Create(ctx, req.Name)
+	if err != nil {
+		return dto.CreateBookCategoryResponse{}, err
 	}
-
-	if err := s.repo.Create(ctx, category); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to create category: %w", err)
-	}
-
-	return category.ID, nil
+	return dto.CreateBookCategoryResponse{ID: res, Name: req.Name}, nil
 }
 
 func (s *bookCategoryService) GetCategoryByID(ctx context.Context, id uuid.UUID) (*models.BookCategory, error) {
-	if id == uuid.Nil {
-		return nil, errors.New("invalid category ID")
-	}
-
-	category, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get category by ID: %w", err)
-	}
-
-	return category, nil
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *bookCategoryService) GetAllCategories(ctx context.Context) ([]models.BookCategory, error) {
-	categories, err := s.repo.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all categories: %w", err)
-	}
-
-	return categories, nil
+	return s.repo.GetAll(ctx)
 }
 
 func (s *bookCategoryService) UpdateCategory(ctx context.Context, category *models.BookCategory) error {
-	if category.ID == uuid.Nil {
-		return errors.New("invalid category ID")
-	}
-	if category.Name == "" {
-		return errors.New("category name cannot be empty")
-	}
-
-	if err := s.repo.Update(ctx, category); err != nil {
-		return fmt.Errorf("failed to update category: %w", err)
-	}
-
-	return nil
+	return s.repo.Update(ctx, category)
 }
 
 func (s *bookCategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	if id == uuid.Nil {
-		return errors.New("invalid category ID")
-	}
-
-	if err := s.repo.Delete(ctx, id); err != nil {
-		return fmt.Errorf("failed to delete category: %w", err)
-	}
-
-	return nil
+	return s.repo.Delete(ctx, id)
 }

@@ -1,1 +1,1 @@
-DROP TABLE book_categories IF EXISTS
+DROP TABLE IF EXISTS book_categories;

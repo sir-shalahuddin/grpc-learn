@@ -26,6 +26,7 @@ func (r *authRepository) GetUserByID(ctx context.Context, userID string) (*pb.Us
 	// Call the gRPC service
 	resp, err := r.grpc.GetUserByID(ctx, req)
 	if err != nil {
+		log.Printf("[AuthRepository - GetUserByID] Error calling GetUserByID: %v", err)
 		return nil, fmt.Errorf("failed to get user by ID: %w", err)
 	}
 
@@ -42,7 +43,7 @@ func (r *authRepository) ValidateToken(ctx context.Context, token string) (strin
 	// Call the gRPC service
 	resp, err := r.grpc.ValidateToken(ctx, req)
 	if err != nil {
-		log.Println(err)
+		log.Printf("[AuthRepository - ValidateToken] Error validating token: %v", err)
 		return "", fmt.Errorf("failed to validate token: %w", err)
 	}
 

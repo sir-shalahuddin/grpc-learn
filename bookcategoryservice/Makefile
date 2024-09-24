@@ -3,7 +3,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=password
-DB_NAME=bookservicedb
+DB_NAME=bookcategoryservicedb
 DB_SSLMODE=disable
 MIGRATE_CMD=$(GOPATH)/bin/migrate
 

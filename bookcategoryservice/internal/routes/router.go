@@ -11,14 +11,14 @@ import (
 )
 
 // RegisterRoutes sets up the Fiber routes for user management
-func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc pb.AuthServiceClient) {
+func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc pb.AuthServiceClient, jwtSecret string) {
 
 	bookcategoryRepo := repository.NewBookCategoryRepository(db)
 	bookcategoryService := service.NewBookCategoryService(bookcategoryRepo)
 	bookcategoryHandler := handler.NewBookCategoryHandler(bookcategoryService)
 
 	authRepo := repository.NewAuthRepository(authSvc)
-	authService := service.NewAuthService(authRepo)
+	authService := service.NewAuthService(authRepo, jwtSecret)
 	authMiddleware := handler.NewAuthMiddleware(authService)
 
 	books := app.Group("/categories")

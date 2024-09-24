@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/pkg/auth"
 	pb "github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/proto/auth"
 )
 
@@ -13,12 +14,16 @@ type AuthRepository interface {
 }
 
 type authService struct {
-	authRepo AuthRepository
+	authRepo  AuthRepository
+	jwtSecret string
 }
 
 // NewAuthService creates a new instance of AuthService.
-func NewAuthService(authRepo AuthRepository) *authService {
-	return &authService{authRepo: authRepo}
+func NewAuthService(authRepo AuthRepository, jwtSecret string) *authService {
+	return &authService{
+		authRepo:  authRepo,
+		jwtSecret: jwtSecret,
+	}
 }
 
 // GetUserByID retrieves a user by their ID.
@@ -32,10 +37,9 @@ func (s *authService) GetUserByID(ctx context.Context, userID string) (*pb.User,
 
 // ValidateToken validates a JWT token and retrieves the associated user.
 func (s *authService) ValidateToken(ctx context.Context, token string) (string, error) {
-	userID, err := s.authRepo.ValidateToken(ctx, token)
+	claims, err := auth.ValidateToken(token, s.jwtSecret)
 	if err != nil {
-		return "", fmt.Errorf("failed to validate token: %w", err)
+		return "", auth.ErrInvalidToken
 	}
-
-	return userID, nil
+	return claims.String(), nil
 }
