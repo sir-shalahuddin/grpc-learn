@@ -37,7 +37,6 @@ func NewUserHandler(userService UserService) *userHandler {
 func (h *userHandler) GetProfile(c *fiber.Ctx) error {
 	userID, ok := c.Locals("id").(uuid.UUID)
 	if !ok {
-		log.Println("invalid user ID")
 		return response.HandleError(c, fmt.Errorf("invalid user ID"), "failed to retrieve user", fiber.StatusInternalServerError)
 	}
 
