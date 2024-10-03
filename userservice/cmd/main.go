@@ -2,10 +2,7 @@ package main
 
 import (
 	"log"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/joho/godotenv"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/config"
@@ -32,7 +29,7 @@ func main() {
 		InstanceConnectionName: config.GetEnv("INSTANCE_CONNECTION_NAME"),
 		UseUnixSocket:          config.GetEnvAsBool("USE_UNIX_SOCKET"),
 	}
-	
+
 	JWTConfig := config.JWTConfig{
 		Secret: config.GetEnv("JWT_SECRET"),
 	}
@@ -44,19 +41,12 @@ func main() {
 
 	mode := strings.ToLower(AppConfig.Mode)
 	// Start REST server in a separate goroutine
-	if mode == "rest" || mode == "hybrid" {
-		go StartRESTServer(db, AppConfig.RESTPort, JWTConfig.Secret)
+	if mode == "rest" {
+		StartRESTServer(db, AppConfig.RESTPort, JWTConfig.Secret)
 	}
 
 	// Start gRPC server in a separate goroutine
-	if mode == "grpc" || mode == "hybrid" {
-		go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
+	if mode == "grpc" {
+		StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
 	}
-
-	// Handle termination signals to gracefully shutdown servers
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-
-	log.Println("Shutting down servers...")
 }
