@@ -20,7 +20,7 @@ func NewDB(config config.DBConfig) (*sql.DB, error) {
 	var DB_URI string
 	if config.UseUnixSocket {
 		DB_URI = fmt.Sprintf(
-			"user=%s password=%s dbname=%s sslmode=disable host=/cloudsql/%s",
+			"user=%s password=%s dbname=%s sslmode=required host=/cloudsql/%s",
 			config.User,
 			config.Pass,
 			config.Name,
