@@ -5,22 +5,31 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/dto"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/models"
 	pb "github.com/sir-shalahuddin/grpc-learn/bookservice/proto/categoryservice"
 )
 
 var (
-	ErrBookNotFound = errors.New("book not found")
+	ErrBookNotFound     = errors.New("book not found")
+	ErrCategoryNotFound = errors.New("category not found")
+	ErrBookDuplicate    = errors.New("book already exists")
 )
 
 type BookRepository interface {
 	GetBookByID(ctx context.Context, bookID uuid.UUID) (*models.Book, error)
-	CreateBook(ctx context.Context, book *models.Book) error
+	AddBook(ctx context.Context, book *models.Book) error
 	UpdateBook(ctx context.Context, tx *sql.Tx, book *models.Book) error
 	DeleteBook(ctx context.Context, bookID uuid.UUID) error
-	ListBooks(ctx context.Context, title, author, category string) ([]*models.Book, error)
+	ListBooks(ctx context.Context, title, author, category string, limit, offset int) ([]*models.Book, error)
+	GetBookByISBN(ctx context.Context, isbn string) (*models.Book, error)
 }
 
 type categoryRepository interface {
@@ -29,8 +38,11 @@ type categoryRepository interface {
 }
 
 type bookService struct {
-	bookRepo BookRepository
-	ctgRepo  categoryRepository
+	bookRepo      BookRepository
+	ctgRepo       categoryRepository
+	categoryCache []*pb.CategoryResponse
+	lastUpdate    time.Time
+	categoryMu    sync.Mutex
 }
 
 func NewBookService(bookRepo BookRepository, ctgRepo categoryRepository) *bookService {
@@ -40,11 +52,45 @@ func NewBookService(bookRepo BookRepository, ctgRepo categoryRepository) *bookSe
 	}
 }
 
-func (s *bookService) CreateBook(ctx context.Context, book *models.Book) error {
-	return s.bookRepo.CreateBook(ctx, book)
+func (s *bookService) AddBook(ctx context.Context, req dto.AddBookRequest, userID uuid.UUID) error {
+
+	req.ISBN = strings.ReplaceAll(req.ISBN, "-", "")
+
+	if req.ISBN != "" {
+		existingBook, err := s.bookRepo.GetBookByISBN(ctx, req.ISBN)
+		if err != nil {
+			return err
+		}
+		if existingBook != nil {
+			return fmt.Errorf("%w: %s", ErrBookDuplicate, existingBook.Title)
+		}
+	}
+
+	if req.CategoryID != uuid.Nil {
+		existingCategory, err := s.ctgRepo.GetCategoryByID(ctx, req.CategoryID.String())
+		if err != nil {
+			return err
+		}
+		if existingCategory == nil {
+			return ErrCategoryNotFound
+		}
+		// log.Println("hit", existingCategory.GetId())
+	}
+
+	book := &models.Book{
+		Title:         req.Title,
+		Author:        req.Author,
+		ISBN:          req.ISBN,
+		PublishedDate: req.PublishedDate,
+		CategoryID:    req.CategoryID,
+		Stock:         req.Stock,
+		AddedBy:       userID,
+	}
+
+	return s.bookRepo.AddBook(ctx, book)
 }
 
-func (s *bookService) GetBookByID(ctx context.Context, id uuid.UUID) (*models.Book, error) {
+func (s *bookService) GetBookByID(ctx context.Context, id uuid.UUID) (*dto.GetBookResponse, error) {
 	book, err := s.bookRepo.GetBookByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get book by ID: %w", err)
@@ -58,48 +104,122 @@ func (s *bookService) GetBookByID(ctx context.Context, id uuid.UUID) (*models.Bo
 	if err != nil {
 		return nil, fmt.Errorf("failed to get category by ID: %w", err)
 	}
-	if category != nil {
-		book.CategoryName = category.Name
+
+	response := dto.GetBookResponse{
+		ID:            book.ID,
+		Title:         book.Title,
+		Author:        book.Author,
+		ISBN:          book.ISBN,
+		PublishedDate: book.PublishedDate,
+		Category:      category.Name,
+		Stock:         book.Stock,
 	}
 
-	return book, nil
+	return &response, nil
 }
 
-func (s *bookService) UpdateBook(ctx context.Context, book *models.Book) error {
+func (s *bookService) UpdateBook(ctx context.Context, req dto.UpdateBookRequest, bookID uuid.UUID) error {
+	req.ISBN = strings.ReplaceAll(req.ISBN, "-", "")
+
+	if req.ISBN != "" {
+		existingBook, err := s.bookRepo.GetBookByISBN(ctx, req.ISBN)
+		if err != nil {
+			return err
+		}
+		if existingBook != nil {
+			return fmt.Errorf("%w: %s", ErrBookDuplicate, existingBook.Title)
+		}
+	}
+
+	if req.CategoryID != uuid.Nil {
+		existingCategory, err := s.ctgRepo.GetCategoryByID(ctx, req.CategoryID.String())
+		if err != nil {
+			return err
+		}
+		if existingCategory == nil {
+			return ErrCategoryNotFound
+		}
+	}
+
+	book := &models.Book{
+		Title:         req.Title,
+		Author:        req.Author,
+		ISBN:          req.ISBN,
+		PublishedDate: req.PublishedDate,
+		CategoryID:    req.CategoryID,
+		Stock:         req.Stock,
+		ID:            bookID,
+	}
+
 	return s.bookRepo.UpdateBook(ctx, nil, book)
 }
 
-func (s *bookService) DeleteBook(ctx context.Context, id uuid.UUID) error {
-	return s.bookRepo.DeleteBook(ctx, id)
+func (s *bookService) DeleteBook(ctx context.Context, bookID uuid.UUID) error {
+	return s.bookRepo.DeleteBook(ctx, bookID)
 }
 
-func (s *bookService) ListBooks(ctx context.Context, title, author, category string) ([]*models.Book, error) {
-	// Get books from the local repository
-	books, err := s.bookRepo.ListBooks(ctx, title, author, category)
+// ListBooks lists books and maps categories using cache
+func (s *bookService) ListBooks(ctx context.Context, title, author, category string, page string) ([]*dto.GetBookResponse, error) {
+
+	pageNum, err := strconv.Atoi(page)
+	if err != nil || pageNum < 1 {
+		pageNum = 1
+	}
+
+	limit := 10
+	offset := (pageNum - 1) * limit
+
+	// Get books from the repository
+	books, err := s.bookRepo.ListBooks(ctx, title, author, category, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list books from repository: %w", err)
 	}
 
-	// Get all categories from the BookCategoryService using gRPC client
-	categoryResp, err := s.ctgRepo.GetCategories(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get categories from gRPC service: %w", err)
+	// Lock the mutex for thread-safe access to cache
+	s.categoryMu.Lock()
+	defer s.categoryMu.Unlock()
+
+	// Check if cached categories are still fresh (10 minutes)
+	if time.Since(s.lastUpdate) < 10*time.Second {
+		log.Println("Returning cached categories")
+	} else {
+		// Fetch new categories from the repository if the cache is stale
+		categories, err := s.ctgRepo.GetCategories(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get categories from gRPC service: %w", err)
+		}
+
+		// Update the cache
+		s.categoryCache = categories
+		s.lastUpdate = time.Now()
+		log.Println("Fetched new categories and updated cache")
 	}
 
 	// Create a map to easily find category names by ID
 	categoryMap := make(map[string]string)
-	for _, c := range categoryResp {
+	for _, c := range s.categoryCache {
 		categoryMap[c.Id] = c.Name
 	}
 
-	// Map category names to books
+	// Prepare response slice
+	var responses []*dto.GetBookResponse
 	for _, book := range books {
-		if categoryName, ok := categoryMap[book.CategoryID.String()]; ok {
-			book.CategoryName = categoryName
-		} else {
-			book.CategoryName = "Unknown" 
+		categoryName := "Unknown"
+		if name, ok := categoryMap[book.CategoryID.String()]; ok {
+			categoryName = name
 		}
+
+		response := dto.GetBookResponse{
+			ID:            book.ID,
+			Title:         book.Title,
+			Author:        book.Author,
+			ISBN:          book.ISBN,
+			PublishedDate: book.PublishedDate,
+			Category:      categoryName,
+			Stock:         book.Stock,
+		}
+		responses = append(responses, &response)
 	}
 
-	return books, nil
+	return responses, nil
 }

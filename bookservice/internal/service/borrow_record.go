@@ -4,16 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/dto"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/models"
 )
 
 var (
 	ErrBorrowingRecordNotFound = errors.New("borrowing record not found")
-	ErrBookUnavailable         = errors.New("book is currently unavailable")
+	ErrBookUnavailable         = errors.New("failed to process due to 0 stock")
 )
 
 type BorrowingRecordRepository interface {
@@ -21,7 +21,7 @@ type BorrowingRecordRepository interface {
 	GetBorrowingRecordByID(ctx context.Context, id uuid.UUID) (*models.BorrowingRecord, error)
 	UpdateBorrowingRecord(ctx context.Context, tx *sql.Tx, record *models.BorrowingRecord) error
 	DeleteBorrowingRecord(ctx context.Context, id uuid.UUID) error
-	ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]models.BorrowingRecord, error)
+	ListBorrowingRecords(ctx context.Context, userID uuid.UUID, queries map[string]string) ([]models.BorrowingRecord, error)
 }
 
 type TxRepository interface {
@@ -44,22 +44,24 @@ func NewBorrowingRecordService(repo BorrowingRecordRepository, txRepo TxReposito
 	}
 }
 
-func (s *borrowingRecordService) BorrowBook(ctx context.Context, bookID, userID uuid.UUID, dueDate *time.Time) error {
+func (s *borrowingRecordService) BorrowBook(ctx context.Context, req dto.BorrowBookRequest, bookID, userID uuid.UUID) error {
 	book, err := s.bookRepo.GetBookByID(ctx, bookID)
 	if err != nil {
 		return err
 	}
-	if book == nil || book.Stock <= 0 {
-		return fmt.Errorf("book not available")
+	if book == nil {
+		return ErrBookNotFound
+	}
+	if book.Stock <= 0 {
+		return ErrBookUnavailable
 	}
 
-	// Create borrowing record
 	record := &models.BorrowingRecord{
-		ID:         uuid.New(),
-		BookID:     bookID,
-		UserID:     userID,
-		BorrowedAt: time.Now(),
-		DueDate:    dueDate,
+		Book: models.Book{
+			ID: bookID,
+		},
+		UserID:  userID,
+		DueDate: req.DueDate,
 	}
 
 	tx, err := s.txRepo.BeginTx(ctx)
@@ -81,7 +83,7 @@ func (s *borrowingRecordService) BorrowBook(ctx context.Context, bookID, userID 
 	return s.txRepo.Commit(tx)
 }
 
-func (s *borrowingRecordService) ReturnBook(ctx context.Context, recordID uuid.UUID) error {
+func (s *borrowingRecordService) ReturnBook(ctx context.Context, bookID, recordID uuid.UUID) error {
 	record, err := s.repo.GetBorrowingRecordByID(ctx, recordID)
 	if err != nil {
 		return err
@@ -90,13 +92,17 @@ func (s *borrowingRecordService) ReturnBook(ctx context.Context, recordID uuid.U
 		return ErrBorrowingRecordNotFound
 	}
 
-	book, err := s.bookRepo.GetBookByID(ctx, record.BookID)
+	book, err := s.bookRepo.GetBookByID(ctx, record.Book.ID)
 	if err != nil {
 		return err
 	}
+	if book == nil {
+		return ErrBookNotFound
+	}
 
 	// Update record
-	record.ReturnedAt = time.Now()
+	returnAt := time.Now()
+	record.ReturnedAt = &returnAt
 	tx, err := s.txRepo.BeginTx(ctx)
 	if err != nil {
 		return err
@@ -116,6 +122,16 @@ func (s *borrowingRecordService) ReturnBook(ctx context.Context, recordID uuid.U
 	return s.txRepo.Commit(tx)
 }
 
-func (s *borrowingRecordService) ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]models.BorrowingRecord, error) {
-	return s.repo.ListBorrowingRecordsByBookID(ctx, bookID)
+func (s *borrowingRecordService) ListBorrowingRecords(ctx context.Context, queries map[string]string, userID uuid.UUID) ([]models.BorrowingRecord, error) {
+
+	record, err := s.repo.ListBorrowingRecords(ctx, userID, queries)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(record) == 0 {
+		return nil, nil
+	}
+
+	return record, nil
 }

@@ -30,13 +30,14 @@ func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc authservice.AuthServiceC
 
 	books := app.Group("/books")
 
-	books.Post("/", authMiddleware.Protected("librarian"), bookHandler.CreateBook)
+	books.Post("/:id/borrow", authMiddleware.Protected("user"), borrowingRecordHandler.BorrowBook)
+	books.Put("/:book_id/records/:record_id", authMiddleware.Protected("user"), borrowingRecordHandler.ReturnBook)
+	books.Get("/records", authMiddleware.Protected("user"), borrowingRecordHandler.ListBorrowingRecords)
+
+	books.Post("/", authMiddleware.Protected("librarian"), bookHandler.AddBook)
 	books.Get("/:id", bookHandler.GetBookByID)
 	books.Put("/:id", authMiddleware.Protected("librarian"), bookHandler.UpdateBook)
 	books.Delete("/:id", authMiddleware.Protected("librarian"), bookHandler.DeleteBook)
 	books.Get("/", bookHandler.ListBooks)
 
-	books.Post("/:id/borrow", authMiddleware.Protected("user"), borrowingRecordHandler.BorrowBook)
-	books.Put("/:id/return", authMiddleware.Protected("user"), borrowingRecordHandler.ReturnBook)
-	books.Get("/:id/records", authMiddleware.Protected("librarian"), borrowingRecordHandler.ListBorrowingRecords)
 }

@@ -18,11 +18,11 @@ func NewBookRepository(db *sql.DB) *BookRepository {
 	return &BookRepository{db: db}
 }
 
-func (r *BookRepository) CreateBook(ctx context.Context, book *models.Book) error {
+func (r *BookRepository) AddBook(ctx context.Context, book *models.Book) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO books (id, title, author, isbn, published_date, category_id, stock, added_by, created_at, updated_at, version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		book.ID, book.Title, book.Author, book.ISBN, book.PublishedDate, book.CategoryID, book.Stock, book.AddedBy, book.CreatedAt, book.UpdatedAt, book.Version,
+		INSERT INTO books (title, author, isbn, published_date, category_id, stock, added_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		book.Title, book.Author, book.ISBN, book.PublishedDate, book.CategoryID, book.Stock, book.AddedBy,
 	)
 	return err
 }
@@ -36,6 +36,19 @@ func (r *BookRepository) GetBookByID(ctx context.Context, id uuid.UUID) (*models
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get book by ID: %w", err)
+	}
+	return &book, nil
+}
+
+func (r *BookRepository) GetBookByISBN(ctx context.Context, isbn string) (*models.Book, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT id, title, author, isbn, published_date, category_id, stock, added_by, created_at, updated_at, version FROM books WHERE isbn = $1`, isbn)
+	var book models.Book
+	err := row.Scan(&book.ID, &book.Title, &book.Author, &book.ISBN, &book.PublishedDate, &book.CategoryID, &book.Stock, &book.AddedBy, &book.CreatedAt, &book.UpdatedAt, &book.Version)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get book by ISBN: %w", err)
 	}
 	return &book, nil
 }
@@ -79,27 +92,39 @@ func (r *BookRepository) DeleteBook(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *BookRepository) ListBooks(ctx context.Context, title, author, category string) ([]*models.Book, error) {
+func (r *BookRepository) ListBooks(ctx context.Context, title, author, category string, limit, offset int) ([]*models.Book, error) {
 	query := `SELECT id, title, author, isbn, published_date, category_id, stock, added_by, created_at, updated_at, version FROM books WHERE 1=1`
 	args := []interface{}{}
+	argIndex := 1
+
 	if title != "" {
-		query += ` AND title LIKE $1`
+		query += fmt.Sprintf(" AND title LIKE $%d", argIndex)
 		args = append(args, "%"+title+"%")
+		argIndex++
 	}
 	if author != "" {
-		query += ` AND author LIKE $2`
+		query += fmt.Sprintf(" AND author LIKE $%d", argIndex)
 		args = append(args, "%"+author+"%")
+		argIndex++
 	}
 	if category != "" {
-		query += ` AND category_id = $3`
+		query += fmt.Sprintf(" AND category_id = $%d", argIndex)
 		args = append(args, category)
+		argIndex++
 	}
+
+	// Add pagination: LIMIT and OFFSET
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limit, offset)
+
+	// Execute the query
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list books: %w", err)
 	}
 	defer rows.Close()
 
+	// Parse the result set
 	var books []*models.Book
 	for rows.Next() {
 		var book models.Book
@@ -108,5 +133,6 @@ func (r *BookRepository) ListBooks(ctx context.Context, title, author, category 
 		}
 		books = append(books, &book)
 	}
+
 	return books, nil
 }

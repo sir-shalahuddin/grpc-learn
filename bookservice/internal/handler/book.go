@@ -2,20 +2,22 @@ package handler
 
 import (
 	"context"
-	"time"
+	"errors"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/sir-shalahuddin/grpc-learn/bookservice/models"
+	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/dto"
+	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/service"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/pkg/response"
 )
 
 type BookService interface {
-	CreateBook(ctx context.Context, book *models.Book) error
-	GetBookByID(ctx context.Context, id uuid.UUID) (*models.Book, error)
-	UpdateBook(ctx context.Context, book *models.Book) error
+	AddBook(ctx context.Context, req dto.AddBookRequest, userID uuid.UUID) error
+	GetBookByID(ctx context.Context, id uuid.UUID) (*dto.GetBookResponse, error)
+	UpdateBook(ctx context.Context, req dto.UpdateBookRequest, bookID uuid.UUID) error
 	DeleteBook(ctx context.Context, id uuid.UUID) error
-	ListBooks(ctx context.Context, title, author, category string) ([]*models.Book, error)
+	ListBooks(ctx context.Context, title, author, category string, page string) ([]*dto.GetBookResponse, error)
 }
 
 type bookHandler struct {
@@ -26,40 +28,27 @@ func NewBookHandler(bookService BookService) *bookHandler {
 	return &bookHandler{bookService: bookService}
 }
 
-func (h *bookHandler) CreateBook(c *fiber.Ctx) error {
-	userID, err := uuid.Parse(c.Locals("id").(string))
-	if err != nil {
-		return response.HandleError(c, err, "failed to create book", fiber.StatusInternalServerError)
-	}
-	var req struct {
-		Title         string     `json:"title"`
-		Author        string     `json:"author"`
-		ISBN          string     `json:"isbn"`
-		PublishedDate *time.Time `json:"published_date"`
-		CategoryID    uuid.UUID  `json:"category_id"`
-		Stock         int        `json:"stock"`
-	}
+func (h *bookHandler) AddBook(c *fiber.Ctx) error {
+	userID := c.Locals("id").(uuid.UUID)
+
+	var req dto.AddBookRequest
 
 	if err := c.BodyParser(&req); err != nil {
 		return response.HandleError(c, err, "invalid request payload", fiber.StatusBadRequest)
 	}
 
-	book := &models.Book{
-		ID:            uuid.New(),
-		Title:         req.Title,
-		Author:        req.Author,
-		ISBN:          req.ISBN,
-		PublishedDate: req.PublishedDate,
-		CategoryID:    req.CategoryID,
-		Stock:         req.Stock,
-		AddedBy:       userID,
+	if err := h.bookService.AddBook(c.Context(), req, userID); err != nil {
+		if errors.Is(err, service.ErrBookDuplicate) {
+			return response.HandleError(c, err, "", fiber.StatusConflict)
+		}
+		if errors.Is(err, service.ErrCategoryNotFound) {
+			return response.HandleError(c, err, "", fiber.StatusNotFound)
+		}
+		log.Println(err)
+		return response.HandleError(c, err, "failed to add book", fiber.StatusInternalServerError)
 	}
 
-	if err := h.bookService.CreateBook(c.Context(), book); err != nil {
-		return response.HandleError(c, err, "failed to create book", fiber.StatusInternalServerError)
-	}
-
-	return response.HandleSuccess(c, "book created successfully", book, fiber.StatusCreated)
+	return response.HandleSuccess(c, "book successfully added", nil, fiber.StatusCreated)
 }
 
 func (h *bookHandler) GetBookByID(c *fiber.Ctx) error {
@@ -70,6 +59,7 @@ func (h *bookHandler) GetBookByID(c *fiber.Ctx) error {
 
 	book, err := h.bookService.GetBookByID(c.Context(), id)
 	if err != nil {
+
 		return response.HandleError(c, err, "failed to retrieve book", fiber.StatusInternalServerError)
 	}
 	if book == nil {
@@ -85,35 +75,18 @@ func (h *bookHandler) UpdateBook(c *fiber.Ctx) error {
 		return response.HandleError(c, err, "invalid book ID", fiber.StatusBadRequest)
 	}
 
-	var req struct {
-		Title         string     `json:"title"`
-		Author        string     `json:"author"`
-		ISBN          string     `json:"isbn"`
-		PublishedDate *time.Time `json:"published_date"`
-		CategoryID    uuid.UUID  `json:"category_id"`
-		Stock         int        `json:"stock"`
-	}
+	var req dto.UpdateBookRequest
 
 	if err := c.BodyParser(&req); err != nil {
 		return response.HandleError(c, err, "invalid request payload", fiber.StatusBadRequest)
 	}
 
-	book := &models.Book{
-		ID:            id,
-		Title:         req.Title,
-		Author:        req.Author,
-		ISBN:          req.ISBN,
-		PublishedDate: req.PublishedDate,
-		CategoryID:    req.CategoryID,
-		Stock:         req.Stock,
-	}
-
-	err = h.bookService.UpdateBook(c.Context(), book)
+	err = h.bookService.UpdateBook(c.Context(), req, id)
 	if err != nil {
 		return response.HandleError(c, err, "failed to update book", fiber.StatusInternalServerError)
 	}
 
-	return response.HandleSuccess(c, "book updated successfully", book, fiber.StatusOK)
+	return response.HandleSuccess(c, "book updated successfully", "", fiber.StatusOK)
 }
 
 func (h *bookHandler) DeleteBook(c *fiber.Ctx) error {
@@ -134,8 +107,9 @@ func (h *bookHandler) ListBooks(c *fiber.Ctx) error {
 	title := c.Query("title")
 	author := c.Query("author")
 	category := c.Query("category")
+	page := c.Query("page", "1") // Default to page 1 if not provided
 
-	books, err := h.bookService.ListBooks(c.Context(), title, author, category)
+	books, err := h.bookService.ListBooks(c.Context(), title, author, category, page)
 	if err != nil {
 		return response.HandleError(c, err, "failed to retrieve books", fiber.StatusInternalServerError)
 	}

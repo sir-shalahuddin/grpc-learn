@@ -3,19 +3,20 @@ package handler
 import (
 	"context"
 	"errors"
-	"time"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/dto"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/service"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/models"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/pkg/response"
 )
 
 type BorrowingRecordService interface {
-	BorrowBook(ctx context.Context, bookID, userID uuid.UUID, dueDate *time.Time) error
-	ReturnBook(ctx context.Context, bookID uuid.UUID) error
-	ListBorrowingRecordsByBookID(ctx context.Context, bookID uuid.UUID) ([]models.BorrowingRecord, error)
+	BorrowBook(ctx context.Context, req dto.BorrowBookRequest, bookID, userID uuid.UUID) error
+	ReturnBook(ctx context.Context, bookID, record_id uuid.UUID) error
+	ListBorrowingRecords(ctx context.Context, queries map[string]string, userID uuid.UUID) ([]models.BorrowingRecord, error)
 }
 
 type borrowingRecordHandler struct {
@@ -28,50 +29,40 @@ func NewBorrowingRecordHandler(service BorrowingRecordService) *borrowingRecordH
 
 // BorrowBook handles the borrowing of a book by a user.
 func (h *borrowingRecordHandler) BorrowBook(c *fiber.Ctx) error {
-	userIDStr, ok := c.Locals("id").(string)
-	if !ok {
-		return response.HandleError(c, errors.New("user ID not found"), "invalid user", fiber.StatusUnauthorized)
-	}
+	userID := c.Locals("id").(uuid.UUID)
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return response.HandleError(c, err, "invalid user ID", fiber.StatusBadRequest)
-	}
-
-	// Parse request body
-	type Request struct {
-		BookID  uuid.UUID  `json:"book_id"`
-		DueDate *time.Time `json:"due_date,omitempty"`
-	}
-
-	req := new(Request)
-	if err := c.BodyParser(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
-	}
-
-	// Call the service to borrow a book
-	err = h.service.BorrowBook(c.Context(), req.BookID, userID, req.DueDate)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Book borrowed successfully",
-	})
-}
-
-// ReturnBook handles the return of a borrowed book using the book ID.
-func (h *borrowingRecordHandler) ReturnBook(c *fiber.Ctx) error {
 	bookID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return response.HandleError(c, err, "invalid book ID", fiber.StatusBadRequest)
 	}
 
-	err = h.service.ReturnBook(c.Context(), bookID)
+	var req dto.BorrowBookRequest
+
+	if err := c.BodyParser(&req); err != nil {
+		log.Println(err)
+		return response.HandleError(c, err, "invalid request payload", fiber.StatusBadRequest)
+	}
+
+	if err := h.service.BorrowBook(c.Context(), req, bookID, userID); err != nil {
+		return response.HandleError(c, err, "failed to borrow book", fiber.StatusInternalServerError)
+	}
+
+	return response.HandleSuccess(c, "book successfully borrowed", nil, fiber.StatusCreated)
+}
+
+// ReturnBook handles the return of a borrowed book using the book ID.
+func (h *borrowingRecordHandler) ReturnBook(c *fiber.Ctx) error {
+	bookID, err := uuid.Parse(c.Params("book_id"))
+	if err != nil {
+		return response.HandleError(c, err, "invalid book ID", fiber.StatusBadRequest)
+	}
+
+	recordID, err := uuid.Parse(c.Params("record_id"))
+	if err != nil {
+		return response.HandleError(c, err, "invalid record ID", fiber.StatusBadRequest)
+	}
+
+	err = h.service.ReturnBook(c.Context(), bookID, recordID)
 	if err != nil {
 		if errors.Is(err, service.ErrBorrowingRecordNotFound) {
 			return response.HandleError(c, err, "borrowing record not found", fiber.StatusNotFound)
@@ -84,13 +75,13 @@ func (h *borrowingRecordHandler) ReturnBook(c *fiber.Ctx) error {
 
 // ListBorrowingRecords lists all borrowing records for a given book ID.
 func (h *borrowingRecordHandler) ListBorrowingRecords(c *fiber.Ctx) error {
-	bookID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return response.HandleError(c, err, "invalid book ID", fiber.StatusBadRequest)
-	}
+	queries := c.Queries()
 
-	records, err := h.service.ListBorrowingRecordsByBookID(c.Context(), bookID)
+	userID := c.Locals("id").(uuid.UUID)
+
+	records, err := h.service.ListBorrowingRecords(c.Context(), queries, userID)
 	if err != nil {
+		log.Println(err)
 		return response.HandleError(c, err, "failed to list borrowing records", fiber.StatusInternalServerError)
 	}
 

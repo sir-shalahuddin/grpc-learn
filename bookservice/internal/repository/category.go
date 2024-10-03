@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	pb "github.com/sir-shalahuddin/grpc-learn/bookservice/proto/categoryservice" // Adjust the import path as needed
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
-
-
 
 type categoryRepository struct {
 	client pb.BookCategoryServiceClient
@@ -36,10 +36,16 @@ func (r *categoryRepository) GetCategoryByID(ctx context.Context, id string) (*p
 		Id: id,
 	}
 
+	// Call the gRPC client method to get the category
 	resp, err := r.client.GetCategoryByID(ctx, req)
 	if err != nil {
+		// Check if the error is a NotFound error
+		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get category by ID: %w", err)
 	}
 
+	// Return the response from the gRPC server
 	return resp, nil
 }

@@ -2,9 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/joho/godotenv"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/config"
@@ -19,7 +16,7 @@ func main() {
 	}
 
 	AppConfig := config.AppConfig{
-		GRPCPort: config.GetEnv("GRPC_PORT"),
+		// GRPCPort: config.GetEnv("GRPC_PORT"),
 		RESTPort: config.GetEnv("REST_PORT"),
 	}
 	DBConfig := config.DBConfig{
@@ -51,15 +48,15 @@ func main() {
 	}
 
 	// Start REST server in a separate goroutine
-	go StartRESTServer(db, authClients, categoryClients, AppConfig.RESTPort)
+	StartRESTServer(db, authClients, categoryClients, AppConfig.RESTPort)
 
 	// Start gRPC server in a separate goroutine
 	// go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
 
 	// Handle termination signals to gracefully shutdown servers
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
+	// sigs := make(chan os.Signal, 1)
+	// signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	// <-sigs
 
-	log.Println("Shutting down servers...")
+	// log.Println("Shutting down servers...")
 }
