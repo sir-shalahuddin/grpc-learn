@@ -20,11 +20,13 @@ func main() {
 		RESTPort: config.GetEnv("REST_PORT"),
 	}
 	DBConfig := config.DBConfig{
-		Host: config.GetEnv("DB_HOST"),
-		Port: config.GetEnv("DB_PORT"),
-		User: config.GetEnv("DB_USER"),
-		Pass: config.GetEnv("DB_PASS"),
-		Name: config.GetEnv("DB_NAME"),
+		Host:                   config.GetEnv("DB_HOST"),
+		Port:                   config.GetEnv("DB_PORT"),
+		User:                   config.GetEnv("DB_USER"),
+		Pass:                   config.GetEnv("DB_PASS"),
+		Name:                   config.GetEnv("DB_NAME"),
+		InstanceConnectionName: config.GetEnv("INSTANCE_CONNECTION_NAME"),
+		UseUnixSocket:          config.GetEnvAsBool("USE_UNIX_SOCKET"),
 	}
 
 	GRPCConfig := config.GRPCConfig{
@@ -50,13 +52,4 @@ func main() {
 	// Start REST server in a separate goroutine
 	StartRESTServer(db, authClients, categoryClients, AppConfig.RESTPort)
 
-	// Start gRPC server in a separate goroutine
-	// go StartGRPCServer(db, AppConfig.GRPCPort, JWTConfig.Secret)
-
-	// Handle termination signals to gracefully shutdown servers
-	// sigs := make(chan os.Signal, 1)
-	// signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	// <-sigs
-
-	// log.Println("Shutting down servers...")
 }
