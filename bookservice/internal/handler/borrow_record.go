@@ -44,6 +44,7 @@ func (h *borrowingRecordHandler) BorrowBook(c *fiber.Ctx) error {
 	}
 
 	if err := h.service.BorrowBook(c.Context(), req, bookID, userID); err != nil {
+		log.Println(err)
 		return response.HandleError(c, err, "failed to borrow book", fiber.StatusInternalServerError)
 	}
 
@@ -67,6 +68,7 @@ func (h *borrowingRecordHandler) ReturnBook(c *fiber.Ctx) error {
 		if errors.Is(err, service.ErrBorrowingRecordNotFound) {
 			return response.HandleError(c, err, "borrowing record not found", fiber.StatusNotFound)
 		}
+		log.Println(err)
 		return response.HandleError(c, err, "failed to return book", fiber.StatusInternalServerError)
 	}
 

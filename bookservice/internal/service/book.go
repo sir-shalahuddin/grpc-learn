@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -169,39 +168,60 @@ func (s *bookService) ListBooks(ctx context.Context, title, author, category str
 	limit := 10
 	offset := (pageNum - 1) * limit
 
-	// Get books from the repository
-	books, err := s.bookRepo.ListBooks(ctx, title, author, category, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list books from repository: %w", err)
-	}
+	var (
+		books       []*models.Book
+		categoryMap map[string]string
+	)
 
-	// Lock the mutex for thread-safe access to cache
-	s.categoryMu.Lock()
-	defer s.categoryMu.Unlock()
+	// Use WaitGroup to run ListBooks and GetCategories concurrently
+	var wg sync.WaitGroup
+	wg.Add(2) // We are running 2 operations in parallel
 
-	// Check if cached categories are still fresh (10 minutes)
-	if time.Since(s.lastUpdate) < 10*time.Second {
-		log.Println("Returning cached categories")
-	} else {
-		// Fetch new categories from the repository if the cache is stale
-		categories, err := s.ctgRepo.GetCategories(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get categories from gRPC service: %w", err)
+	// Channel to capture errors
+	errCh := make(chan error, 2)
+
+	// Goroutine to fetch books
+	go func() {
+		defer wg.Done()
+		var bookErr error
+		books, bookErr = s.bookRepo.ListBooks(ctx, title, author, category, limit, offset)
+		if bookErr != nil {
+			errCh <- fmt.Errorf("failed to list books from repository: %w", bookErr)
+		}
+	}()
+
+	// Goroutine to fetch categories
+	go func() {
+		defer wg.Done()
+
+		// Fetch categories from the repository
+		categories, catErr := s.ctgRepo.GetCategories(ctx)
+		if catErr != nil {
+			errCh <- fmt.Errorf("failed to get categories from gRPC service: %w", catErr)
+			return
 		}
 
-		// Update the cache
-		s.categoryCache = categories
-		s.lastUpdate = time.Now()
-		log.Println("Fetched new categories and updated cache")
+		// Create a map to easily find category names by ID
+		categoryMap = make(map[string]string)
+		for _, c := range categories {
+			categoryMap[c.Id] = c.Name
+		}
+	}()
+
+	// Wait for both goroutines to finish
+	wg.Wait()
+
+	// Close the error channel to avoid leaking
+	close(errCh)
+
+	// Check if there were any errors during parallel execution
+	for err := range errCh {
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Create a map to easily find category names by ID
-	categoryMap := make(map[string]string)
-	for _, c := range s.categoryCache {
-		categoryMap[c.Id] = c.Name
-	}
-
-	// Prepare response slice
+	// Prepare response slice after both goroutines have completed
 	var responses []*dto.GetBookResponse
 	for _, book := range books {
 		categoryName := "Unknown"

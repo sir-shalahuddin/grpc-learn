@@ -29,3 +29,8 @@ type BorrowingRecord struct {
 	DueDate    *time.Time `json:"due_date"`    // Due date for returning the borrowed book
 	ReturnedAt *time.Time `json:"returned_at"` // Timestamp when the book was returned (if applicable)
 }
+
+type BookCategory struct {
+	ID   uuid.UUID `db:"id"`
+	Name string    `db:"name"`
+}

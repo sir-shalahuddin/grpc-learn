@@ -59,7 +59,7 @@ func (h *bookHandler) GetBookByID(c *fiber.Ctx) error {
 
 	book, err := h.bookService.GetBookByID(c.Context(), id)
 	if err != nil {
-
+		log.Println(err)
 		return response.HandleError(c, err, "failed to retrieve book", fiber.StatusInternalServerError)
 	}
 	if book == nil {
@@ -83,6 +83,7 @@ func (h *bookHandler) UpdateBook(c *fiber.Ctx) error {
 
 	err = h.bookService.UpdateBook(c.Context(), req, id)
 	if err != nil {
+		log.Println(err)
 		return response.HandleError(c, err, "failed to update book", fiber.StatusInternalServerError)
 	}
 
@@ -97,6 +98,7 @@ func (h *bookHandler) DeleteBook(c *fiber.Ctx) error {
 
 	err = h.bookService.DeleteBook(c.Context(), id)
 	if err != nil {
+		log.Println(err)
 		return response.HandleError(c, err, "failed to delete book", fiber.StatusInternalServerError)
 	}
 
@@ -111,6 +113,7 @@ func (h *bookHandler) ListBooks(c *fiber.Ctx) error {
 
 	books, err := h.bookService.ListBooks(c.Context(), title, author, category, page)
 	if err != nil {
+		log.Println(err)
 		return response.HandleError(c, err, "failed to retrieve books", fiber.StatusInternalServerError)
 	}
 
