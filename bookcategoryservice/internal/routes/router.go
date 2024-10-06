@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/internal/handler"
 	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/internal/repository"
 	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/internal/service"
@@ -22,6 +23,9 @@ func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc pb.AuthServiceClient, jw
 	authMiddleware := handler.NewAuthMiddleware(authService)
 
 	books := app.Group("/categories")
+
+	// documentation
+	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Define the routes
 	books.Post("/", authMiddleware.Protected("librarian"), bookcategoryHandler.CreateCategory)

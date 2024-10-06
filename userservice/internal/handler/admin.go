@@ -26,6 +26,15 @@ func NewAdminHandler(adminService AdminService) *adminHandler {
 	return &adminHandler{adminService: adminService}
 }
 
+// ListUsers godoc
+// @Summary List all users
+// @Description Retrieve all users from the database
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=[]models.User}
+// @Failure 500 {object} response.ErrorMessage
+// @Router /admin/users [get]
 func (h *adminHandler) ListUsers(c *fiber.Ctx) error {
 	users, err := h.adminService.ListUsers(context.Background())
 	if err != nil {
@@ -36,6 +45,19 @@ func (h *adminHandler) ListUsers(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "Retrieve list of users successful", users, fiber.StatusOK)
 }
 
+// UpdateUserRoles godoc
+// @Summary Update user roles
+// @Description Update roles of a specific user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param data body dto.UpdateUserRoles true "Updated roles data"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.ErrorMessage
+// @Failure 403 {object} response.ErrorMessage
+// @Failure 404 {object} response.ErrorMessage
+// @Router /admin/users/{id}/roles [put]
 func (h *adminHandler) UpdateUserRoles(c *fiber.Ctx) error {
 	userID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -62,6 +84,18 @@ func (h *adminHandler) UpdateUserRoles(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "Update user role successful", nil, fiber.StatusOK)
 }
 
+// DeleteUser godoc
+// @Summary Delete a user
+// @Description Delete a specific user from the database
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.ErrorMessage
+// @Failure 403 {object} response.ErrorMessage
+// @Failure 404 {object} response.ErrorMessage
+// @Router /admin/users/{id} [delete]
 func (h *adminHandler) DeleteUser(c *fiber.Ctx) error {
 	userID, err := uuid.Parse(c.Params("id"))
 	if err != nil {

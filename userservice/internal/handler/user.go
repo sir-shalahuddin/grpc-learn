@@ -34,6 +34,17 @@ func NewUserHandler(userService UserService) *userHandler {
 }
 
 // GetProfile retrieves the profile of the currently authenticated user.
+// @Summary Get user profile
+// @Description Retrieves the profile of the authenticated user
+// @Tags user
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Response{data=dto.GetProfileResponse} "Profile retrieved successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid user ID"
+// @Failure 404 {object} response.ErrorMessage "User not found"
+// @Failure 500 {object} response.ErrorMessage "Failed to retrieve user"
+// @Router /profile [get]
+// @Security BearerAuth
 func (h *userHandler) GetProfile(c *fiber.Ctx) error {
 	userID, ok := c.Locals("id").(uuid.UUID)
 	if !ok {
@@ -52,6 +63,18 @@ func (h *userHandler) GetProfile(c *fiber.Ctx) error {
 }
 
 // UpdateProfile updates the profile of the currently authenticated user.
+// @Summary Update user profile
+// @Description Updates the profile of the authenticated user
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param updateProfileRequest body dto.UpdateProfileRequest true "Update Profile Request"
+// @Success 200 {object} response.Response "Profile updated successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid request payload"
+// @Failure 409 {object} response.ErrorMessage "Duplicate email"
+// @Failure 500 {object} response.ErrorMessage "Failed to update profile"
+// @Router /profile [put]
+// @Security BearerAuth
 func (h *userHandler) UpdateProfile(c *fiber.Ctx) error {
 	userID, ok := c.Locals("id").(uuid.UUID)
 	if !ok {

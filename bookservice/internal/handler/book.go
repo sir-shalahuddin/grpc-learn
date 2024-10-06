@@ -28,6 +28,20 @@ func NewBookHandler(bookService BookService) *bookHandler {
 	return &bookHandler{bookService: bookService}
 }
 
+// AddBook godoc
+// @Summary Add a new book
+// @Description Librarian adds a new book
+// @Tags Books
+// @Accept json
+// @Produce json
+// @Param AddBookRequest body dto.AddBookRequest true "Add Book Request"
+// @Success 201 {object} response.Response "Book successfully added"
+// @Failure 400 {object} response.ErrorMessage "Invalid request payload"
+// @Failure 409 {object} response.ErrorMessage "Duplicate book"
+// @Failure 404 {object} response.ErrorMessage "Category not found"
+// @Failure 500 {object} response.ErrorMessage "Internal server error"
+// @Security BearerAuth
+// @Router /books [post]
 func (h *bookHandler) AddBook(c *fiber.Ctx) error {
 	userID := c.Locals("id").(uuid.UUID)
 
@@ -51,6 +65,17 @@ func (h *bookHandler) AddBook(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "book successfully added", nil, fiber.StatusCreated)
 }
 
+// GetBookByID godoc
+// @Summary Get a book by ID
+// @Description Retrieves a book by its ID
+// @Tags Books
+// @Produce json
+// @Param id path string true "Book ID"
+// @Success 200 {object} response.Response "Book retrieved successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid book ID"
+// @Failure 404 {object} response.ErrorMessage "Book not found"
+// @Failure 500 {object} response.ErrorMessage "Internal server error"
+// @Router /books/{id} [get]
 func (h *bookHandler) GetBookByID(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -69,6 +94,19 @@ func (h *bookHandler) GetBookByID(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "book retrieved successfully", book, fiber.StatusOK)
 }
 
+// UpdateBook godoc
+// @Summary Update a book
+// @Description Librarian updates an existing book
+// @Tags Books
+// @Accept json
+// @Produce json
+// @Param id path string true "Book ID"
+// @Param UpdateBookRequest body dto.UpdateBookRequest true "Update Book Request"
+// @Success 200 {object} response.Response "Book updated successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid request payload or book ID"
+// @Failure 500 {object} response.ErrorMessage "Internal server error"
+// @Security BearerAuth
+// @Router /books/{id} [put]
 func (h *bookHandler) UpdateBook(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -90,6 +128,17 @@ func (h *bookHandler) UpdateBook(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "book updated successfully", "", fiber.StatusOK)
 }
 
+// DeleteBook godoc
+// @Summary Delete a book
+// @Description Librarian deletes an existing book
+// @Tags Books
+// @Produce json
+// @Param id path string true "Book ID"
+// @Success 200 {object} response.Response "Book deleted successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid book ID"
+// @Failure 500 {object} response.ErrorMessage "Internal server error"
+// @Security BearerAuth
+// @Router /books/{id} [delete]
 func (h *bookHandler) DeleteBook(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -105,6 +154,18 @@ func (h *bookHandler) DeleteBook(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "book deleted successfully", nil, fiber.StatusOK)
 }
 
+// ListBooks godoc
+// @Summary List books
+// @Description Retrieves a list of books, optionally filtered by title, author, or category
+// @Tags Books
+// @Produce json
+// @Param title query string false "Book title"
+// @Param author query string false "Book author"
+// @Param category query string false "Book category"
+// @Param page query string false "Page number"
+// @Success 200 {object} response.Response "Books retrieved successfully"
+// @Failure 500 {object} response.ErrorMessage "Internal server error"
+// @Router /books [get]
 func (h *bookHandler) ListBooks(c *fiber.Ctx) error {
 	title := c.Query("title")
 	author := c.Query("author")

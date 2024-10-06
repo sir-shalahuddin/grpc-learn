@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"strings"
+	_ "github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/docs"
 
 	"github.com/joho/godotenv"
 	"github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/config"
@@ -10,6 +11,24 @@ import (
 	db "github.com/sir-shalahuddin/grpc-learn/bookcategoryservice/pkg/datasource/postgres"
 )
 
+// @title Category Service API
+// @version 1.0
+// @description API for managing category book
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:3000
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {

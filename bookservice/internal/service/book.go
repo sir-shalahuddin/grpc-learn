@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/dto"
@@ -37,11 +36,8 @@ type categoryRepository interface {
 }
 
 type bookService struct {
-	bookRepo      BookRepository
-	ctgRepo       categoryRepository
-	categoryCache []*pb.CategoryResponse
-	lastUpdate    time.Time
-	categoryMu    sync.Mutex
+	bookRepo BookRepository
+	ctgRepo  categoryRepository
 }
 
 func NewBookService(bookRepo BookRepository, ctgRepo categoryRepository) *bookService {

@@ -1,0 +1,351 @@
+basePath: /
+definitions:
+  dto.AddBookRequest:
+    properties:
+      author:
+        type: string
+      category_id:
+        type: string
+      isbn:
+        type: string
+      published_date:
+        type: string
+      stock:
+        type: integer
+      title:
+        type: string
+    required:
+    - author
+    - title
+    type: object
+  dto.BorrowBookRequest:
+    properties:
+      due_date:
+        type: string
+    type: object
+  dto.UpdateBookRequest:
+    properties:
+      author:
+        type: string
+      category_id:
+        type: string
+      isbn:
+        type: string
+      published_date:
+        type: string
+      stock:
+        type: integer
+      title:
+        type: string
+    type: object
+  response.ErrorMessage:
+    properties:
+      error:
+        type: boolean
+      message:
+        type: string
+      statusCode:
+        type: integer
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      statusCode:
+        type: integer
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for managing book
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Book Service API
+  version: "1.0"
+paths:
+  /books:
+    get:
+      description: Retrieves a list of books, optionally filtered by title, author,
+        or category
+      parameters:
+      - description: Book title
+        in: query
+        name: title
+        type: string
+      - description: Book author
+        in: query
+        name: author
+        type: string
+      - description: Book category
+        in: query
+        name: category
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Books retrieved successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      summary: List books
+      tags:
+      - Books
+    post:
+      consumes:
+      - application/json
+      description: Librarian adds a new book
+      parameters:
+      - description: Add Book Request
+        in: body
+        name: AddBookRequest
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddBookRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Book successfully added
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid request payload
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "404":
+          description: Category not found
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "409":
+          description: Duplicate book
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Add a new book
+      tags:
+      - Books
+  /books/{book_id}/records/{record_id}:
+    put:
+      consumes:
+      - application/json
+      description: User returns a borrowed book by providing the book and record IDs
+      parameters:
+      - description: Book ID
+        in: path
+        name: book_id
+        required: true
+        type: string
+      - description: Borrowing Record ID
+        in: path
+        name: record_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book returned successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid book or record ID
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "404":
+          description: Borrowing record not found
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: Failed to return book
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Return a borrowed book
+      tags:
+      - Borrowing
+  /books/{id}:
+    delete:
+      description: Librarian deletes an existing book
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book deleted successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid book ID
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Delete a book
+      tags:
+      - Books
+    get:
+      description: Retrieves a book by its ID
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book retrieved successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid book ID
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "404":
+          description: Book not found
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      summary: Get a book by ID
+      tags:
+      - Books
+    put:
+      consumes:
+      - application/json
+      description: Librarian updates an existing book
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Book Request
+        in: body
+        name: UpdateBookRequest
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateBookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book updated successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid request payload or book ID
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Update a book
+      tags:
+      - Books
+  /books/{id}/borrow:
+    post:
+      consumes:
+      - application/json
+      description: User borrows a book by providing necessary details
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Borrow Book Request
+        in: body
+        name: BorrowBookRequest
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BorrowBookRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Book successfully borrowed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid book ID or request payload
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: Failed to borrow book
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Borrow a book
+      tags:
+      - Borrowing
+  /books/records:
+    get:
+      description: Retrieve a list of borrowing records for the user
+      parameters:
+      - description: Limit the number of records returned
+        in: query
+        name: limit
+        type: integer
+      - description: Skip a number of records for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of borrowing records
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Failed to list borrowing records
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: List borrowing records
+      tags:
+      - Borrowing
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

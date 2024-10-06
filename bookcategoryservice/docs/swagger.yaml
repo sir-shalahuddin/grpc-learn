@@ -1,0 +1,206 @@
+basePath: /
+definitions:
+  dto.CreateBookCategoryRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  dto.UpdateBookCategoryRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  response.ErrorMessage:
+    properties:
+      error:
+        type: boolean
+      message:
+        type: string
+      statusCode:
+        type: integer
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      statusCode:
+        type: integer
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for managing category book
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Category Service API
+  version: "1.0"
+paths:
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all book categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success to retrieve categories
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: failed to retrieve categories
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      summary: Retrieve all book categories
+      tags:
+      - BookCategory
+    post:
+      consumes:
+      - application/json
+      description: Create a new book category with the provided details
+      parameters:
+      - description: Category details
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateBookCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: success to create category
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: invalid payload
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "409":
+          description: category already exists
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: failed to create book category
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Create a new book category
+      tags:
+      - BookCategory
+  /categories/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a book category by its ID
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: category deleted successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: invalid category ID
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: failed to delete category
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Delete a book category
+      tags:
+      - BookCategory
+    get:
+      consumes:
+      - application/json
+      description: Get the details of a book category by its ID
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success retrieve category
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: invalid category ID
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "404":
+          description: category not found
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: failed to retrieve category
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      summary: Retrieve a book category by ID
+      tags:
+      - BookCategory
+    put:
+      consumes:
+      - application/json
+      description: Update the details of a book category by its ID
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated category details
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateBookCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: category updated successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: invalid category ID or payload
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+        "500":
+          description: failed to update category
+          schema:
+            $ref: '#/definitions/response.ErrorMessage'
+      security:
+      - BearerAuth: []
+      summary: Update a book category
+      tags:
+      - BookCategory
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

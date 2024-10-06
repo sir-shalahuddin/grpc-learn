@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/handler"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/repository"
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/internal/service"
@@ -27,6 +28,9 @@ func RegisterRoutes(app *fiber.App, db *sql.DB, authSvc authservice.AuthServiceC
 	borrowingRecordRepo := repository.NewBorrowingRecordRepository(db)
 	borrowingRecordService := service.NewBorrowingRecordService(borrowingRecordRepo, txRepo, bookRepo)
 	borrowingRecordHandler := handler.NewBorrowingRecordHandler(borrowingRecordService)
+
+	// documentation
+	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	books := app.Group("/books")
 

@@ -6,8 +6,33 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/config"
+	_ "github.com/sir-shalahuddin/grpc-learn/userservice/docs"
 	db "github.com/sir-shalahuddin/grpc-learn/userservice/pkg/database"
 )
+
+// @title User Service API
+// @version 1.0
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:3000
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
+// @Login
+// @description API for managing users and profiles
+// @description Login as Super Admin or Librarian with the following credentials:
+// @description - **Super Admin**: `superadmin@mail.com`, Password: `Password123!`
+// @description - **Librarian**: `librarian@mail.com`, Password: `Password123!`
 
 func main() {
 	err := godotenv.Load(".env")

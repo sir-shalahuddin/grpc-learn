@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/handler"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/repository"
 	"github.com/sir-shalahuddin/grpc-learn/userservice/internal/service"
@@ -23,11 +24,14 @@ func RegisterRoutes(app *fiber.App, db *sql.DB, jwtSecret string) {
 
 	authMiddleware := handler.NewAuthMiddleware(authService)
 
+	// documentation
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
 	// Authentication routes
 	auth := app.Group("/auth")
 	auth.Post("/register", authHandler.Register)
 	auth.Post("/login", authHandler.Login)
-	auth.Post("/refresh", authHandler.RefreshToken)
+	auth.Post("/refresh-token", authHandler.RefreshToken)
 
 	// User routes
 	profile := app.Group("/profile", authMiddleware.Protected())

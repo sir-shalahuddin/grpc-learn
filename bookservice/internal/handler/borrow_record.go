@@ -27,7 +27,19 @@ func NewBorrowingRecordHandler(service BorrowingRecordService) *borrowingRecordH
 	return &borrowingRecordHandler{service: service}
 }
 
-// BorrowBook handles the borrowing of a book by a user.
+// BorrowBook godoc
+// @Summary Borrow a book
+// @Description User borrows a book by providing necessary details
+// @Tags Borrowing
+// @Accept json
+// @Produce json
+// @Param id path string true "Book ID"
+// @Param BorrowBookRequest body dto.BorrowBookRequest true "Borrow Book Request"
+// @Success 201 {object} response.Response "Book successfully borrowed"
+// @Failure 400 {object} response.ErrorMessage "Invalid book ID or request payload"
+// @Failure 500 {object} response.ErrorMessage "Failed to borrow book"
+// @Security BearerAuth
+// @Router /books/{id}/borrow [post]
 func (h *borrowingRecordHandler) BorrowBook(c *fiber.Ctx) error {
 	userID := c.Locals("id").(uuid.UUID)
 
@@ -51,7 +63,20 @@ func (h *borrowingRecordHandler) BorrowBook(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "book successfully borrowed", nil, fiber.StatusCreated)
 }
 
-// ReturnBook handles the return of a borrowed book using the book ID.
+// ReturnBook godoc
+// @Summary Return a borrowed book
+// @Description User returns a borrowed book by providing the book and record IDs
+// @Tags Borrowing
+// @Accept json
+// @Produce json
+// @Param book_id path string true "Book ID"
+// @Param record_id path string true "Borrowing Record ID"
+// @Success 200 {object} response.Response "Book returned successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid book or record ID"
+// @Failure 404 {object} response.ErrorMessage "Borrowing record not found"
+// @Failure 500 {object} response.ErrorMessage "Failed to return book"
+// @Security BearerAuth
+// @Router /books/{book_id}/records/{record_id} [put]
 func (h *borrowingRecordHandler) ReturnBook(c *fiber.Ctx) error {
 	bookID, err := uuid.Parse(c.Params("book_id"))
 	if err != nil {
@@ -75,7 +100,17 @@ func (h *borrowingRecordHandler) ReturnBook(c *fiber.Ctx) error {
 	return response.HandleSuccess(c, "book returned successfully", nil, fiber.StatusOK)
 }
 
-// ListBorrowingRecords lists all borrowing records for a given book ID.
+// ListBorrowingRecords godoc
+// @Summary List borrowing records
+// @Description Retrieve a list of borrowing records for the user
+// @Tags Borrowing
+// @Produce json
+// @Param limit query int false "Limit the number of records returned"
+// @Param offset query int false "Skip a number of records for pagination"
+// @Success 200 {object} response.Response "List of borrowing records"
+// @Failure 500 {object} response.ErrorMessage "Failed to list borrowing records"
+// @Security BearerAuth
+// @Router /books/records [get]
 func (h *borrowingRecordHandler) ListBorrowingRecords(c *fiber.Ctx) error {
 	queries := c.Queries()
 

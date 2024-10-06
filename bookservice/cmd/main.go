@@ -7,8 +7,27 @@ import (
 	"github.com/sir-shalahuddin/grpc-learn/bookservice/config"
 	grpcclient "github.com/sir-shalahuddin/grpc-learn/bookservice/pkg/datasource/grpc"
 	db "github.com/sir-shalahuddin/grpc-learn/bookservice/pkg/datasource/postgres"
+	_ "github.com/sir-shalahuddin/grpc-learn/bookservice/docs"
 )
 
+// @title Book Service API
+// @version 1.0
+// @description API for managing book
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:3000
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {

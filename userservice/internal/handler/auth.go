@@ -36,6 +36,17 @@ func NewAuthHandler(authService AuthService) *authHandler {
 }
 
 // Register handles user registration.
+// @Summary Register a new user
+// @Description Registers a new user with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param registerRequest body dto.RegisterRequest true "Register Request"
+// @Success 200 {object} response.Response "Registration successful"
+// @Failure 400 {object} response.ErrorMessage "Invalid request payload"
+// @Failure 409 {object} response.ErrorMessage "Email already exists"
+// @Failure 500 {object} response.ErrorMessage "Failed to register user"
+// @Router /auth/register [post]
 func (h *authHandler) Register(c *fiber.Ctx) error {
 	var req dto.RegisterRequest
 
@@ -70,6 +81,17 @@ func (h *authHandler) Register(c *fiber.Ctx) error {
 }
 
 // Login handles user login and returns JWT tokens.
+// @Summary Login user
+// @Description Logs in a user and returns JWT tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param loginRequest body dto.LoginRequest true "Login Request"
+// @Success 200 {object} response.Response "Login successful"
+// @Failure 400 {object} response.ErrorMessage "Invalid request payload"
+// @Failure 401 {object} response.ErrorMessage "Invalid credentials"
+// @Failure 500 {object} response.ErrorMessage "Failed to login user"
+// @Router /auth/login [post]
 func (h *authHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequest
 
@@ -104,6 +126,17 @@ func (h *authHandler) Login(c *fiber.Ctx) error {
 }
 
 // RefreshToken handles token refresh and returns a new JWT access token.
+// @Summary Refresh JWT Token
+// @Description Refreshes a JWT token and returns a new access token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param refreshTokenRequest body dto.RefreshTokenRequest true "Refresh Token Request"
+// @Success 200 {object} response.Response "Token refreshed successfully"
+// @Failure 400 {object} response.ErrorMessage "Invalid request payload"
+// @Failure 401 {object} response.ErrorMessage "Invalid token"
+// @Failure 500 {object} response.ErrorMessage "Failed to refresh token"
+// @Router /auth/refresh-token [post]
 func (h *authHandler) RefreshToken(c *fiber.Ctx) error {
 	var req dto.RefreshTokenRequest
 
