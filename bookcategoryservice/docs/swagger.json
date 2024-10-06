@@ -15,7 +15,7 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:3000",
+    "host": "book-category-rest.sirlearn.my.id",
     "basePath": "/",
     "paths": {
         "/categories": {

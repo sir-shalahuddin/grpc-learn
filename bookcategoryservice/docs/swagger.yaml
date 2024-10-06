@@ -31,7 +31,7 @@ definitions:
       statusCode:
         type: integer
     type: object
-host: localhost:3000
+host: book-category-rest.sirlearn.my.id
 info:
   contact:
     email: support@swagger.io
