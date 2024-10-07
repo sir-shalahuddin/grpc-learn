@@ -10,6 +10,8 @@ gRPC-Learn is a microservices-based application designed to demonstrate the use 
 
 ## Architecture
 
+![Architecture Diagram](architecture.png) 
+
 The application is built using the following technologies:
 
 - **Go:** The programming language used for implementing the services.
@@ -54,12 +56,15 @@ The gRPC-Learn project is currently deployed and accessible via Cloud Run. Below
 ### Available Services
 
 - **Book Service:**  
-  - **REST API:** [book-rest.sirlearn.my.id](http://book-rest.sirlearn.my.id)
+  - **REST API:** [book-rest.sirlearn.my.id](http://book-rest.sirlearn.my.id)  
+  - **Documentation:** [Book Service Documentation](./bookservice/README.md)
 
 - **Book Category Service:**  
   - **REST API:** [book-category-rest.sirlearn.my.id](http://book-category-rest.sirlearn.my.id)  
-  - **gRPC API:** [book-category-grpc.sirlearn.my.id](http://book-category-grpc.sirlearn.my.id)
+  - **gRPC API:** [book-category-grpc.sirlearn.my.id](http://book-category-grpc.sirlearn.my.id)  
+  - **Documentation:** [Book Category Service Documentation](./bookcategoryservice/README.md)
 
 - **User Service:**  
   - **REST API:** [user-rest.sirlearn.my.id](http://user-rest.sirlearn.my.id)  
-  - **gRPC API:** [user-grpc.sirlearn.my.id](http://user-grpc.sirlearn.my.id)
+  - **gRPC API:** [user-grpc.sirlearn.my.id](http://user-grpc.sirlearn.my.id)  
+  - **Documentation:** [User Service Documentation](./userservice/README.md)
